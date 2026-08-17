@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/complaints_repository.dart';
 import '../services/vision_classifier.dart';
 import '../services/location_service.dart';
+import '../services/supabase_service.dart';
 import '../utils/geo_utils.dart';
 import '../widgets/civic_category_tiles.dart';
 
@@ -54,14 +56,14 @@ class _ReportScreenState extends State<ReportScreen> {
 
   int _currentStep = 1;
 
-  // Photo state (Supports Gallery, Camera, or Sample photo)
+  // Photo state
   XFile? _pickedFile;
   String _photoUrl = kSampleCivicPhotos[0]['url']!;
   String _category = 'Pothole';
   bool _isClassifying = false;
   ClassificationResult? _aiResult;
 
-  // 100% Automatic GPS State (No manual user address typing)
+  // 100% Automatic GPS State
   double _lat = 21.1432;
   double _lng = 79.0620;
   String _autoDetectedLandmark = 'Near Coffee House Square, West High Court Road, Dharampeth';
@@ -70,15 +72,20 @@ class _ReportScreenState extends State<ReportScreen> {
 
   final TextEditingController _descriptionController = TextEditingController();
 
-  // Phone OTP
+  // Phone OTP State
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
+  bool _isSendingOtp = false;
+  bool _isVerifyingOtp = false;
   bool _otpSent = false;
   bool _isPhoneVerified = false;
   String _phoneHash = '';
+  int _resendTimerSeconds = 0;
+  Timer? _resendTimer;
 
   Map<String, dynamic>? _duplicateAlert;
   String? _rateLimitError;
+  String? _otpErrorMessage;
   bool _isSubmitting = false;
 
   @override
@@ -90,8 +97,6 @@ class _ReportScreenState extends State<ReportScreen> {
       _phoneController.text = _repo.currentCitizenPhone ?? '';
       _phoneHash = _repo.currentCitizenPhoneHash ?? '';
       _isPhoneVerified = true;
-    } else {
-      _phoneController.text = '9823012345';
     }
 
     _runAiClassification();
@@ -104,7 +109,20 @@ class _ReportScreenState extends State<ReportScreen> {
     _descriptionController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
+    _resendTimer?.cancel();
     super.dispose();
+  }
+
+  void _startResendCountdown() {
+    setState(() => _resendTimerSeconds = 30);
+    _resendTimer?.cancel();
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_resendTimerSeconds > 0) {
+        setState(() => _resendTimerSeconds--);
+      } else {
+        timer.cancel();
+      }
+    });
   }
 
   void _runAiClassification() async {
@@ -181,7 +199,6 @@ class _ReportScreenState extends State<ReportScreen> {
             ),
             const SizedBox(height: 14),
 
-            // Gallery Option
             ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(10),
@@ -196,7 +213,6 @@ class _ReportScreenState extends State<ReportScreen> {
               },
             ),
 
-            // Camera Option
             ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(10),
@@ -254,7 +270,6 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  /// 100% Automatic GPS Location Capture
   Future<void> _detectLocation() async {
     setState(() {
       _isDetectingLocation = true;
@@ -304,7 +319,7 @@ class _ReportScreenState extends State<ReportScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('📍 Live GPS Locked: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} ($closest)'),
+          content: Text('📍 Live GPS Locked: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} (${closest.name})'),
           backgroundColor: Colors.green[700],
         ),
       );
@@ -313,7 +328,8 @@ class _ReportScreenState extends State<ReportScreen> {
     _checkDuplicates();
   }
 
-  void _sendOtp() {
+  // Real Supabase Phone OTP Request (Field starts empty)
+  void _handleSendOtp() async {
     final clean = _phoneController.text.replaceAll(RegExp(r'\D'), '');
     if (clean.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -321,26 +337,70 @@ class _ReportScreenState extends State<ReportScreen> {
       );
       return;
     }
+
     setState(() {
-      _otpSent = true;
-      _otpController.text = '849201';
+      _isSendingOtp = true;
+      _otpErrorMessage = null;
     });
+
+    final res = await SupabaseConfig.sendPhoneOtp(clean);
+
+    setState(() {
+      _isSendingOtp = false;
+      _otpSent = true;
+      _otpController.clear(); // Starts completely empty for user to type!
+    });
+
+    _startResendCountdown();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res['message']),
+          backgroundColor: const Color(0xFFE65100),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
-  void _verifyOtp() {
-    if (_otpController.text.length < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter the OTP')),
-      );
+  // Real Supabase OTP Verification
+  void _handleVerifyOtp() async {
+    final code = _otpController.text.trim();
+    if (code.length < 4) {
+      setState(() => _otpErrorMessage = 'Please enter the verification code.');
       return;
     }
-    final hash = GeoUtils.hashPhoneNumber(_phoneController.text);
-    _repo.setCitizenSession(_phoneController.text);
 
     setState(() {
-      _phoneHash = hash;
-      _isPhoneVerified = true;
+      _isVerifyingOtp = true;
+      _otpErrorMessage = null;
     });
+
+    final res = await SupabaseConfig.verifyPhoneOtp(_phoneController.text, code);
+
+    setState(() => _isVerifyingOtp = false);
+
+    if (res['success']) {
+      final hash = GeoUtils.hashPhoneNumber(_phoneController.text);
+      _repo.setCitizenSession(_phoneController.text);
+
+      setState(() {
+        _phoneHash = hash;
+        _isPhoneVerified = true;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['message']),
+            backgroundColor: Colors.green[700],
+          ),
+        );
+      }
+    } else {
+      setState(() => _otpErrorMessage = res['message']);
+    }
   }
 
   void _submitReport() async {
@@ -365,7 +425,6 @@ class _ReportScreenState extends State<ReportScreen> {
       return;
     }
 
-    // Tamper-proof async rate-limit & submission
     final result = await _repo.submitOrMergeReport(
       category: _category,
       description: _descriptionController.text.trim().isEmpty
@@ -490,7 +549,6 @@ class _ReportScreenState extends State<ReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Step Progress Bar
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
@@ -502,7 +560,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // STEP 1: Photo Upload (Gallery / Camera) & Category Selection
+                // STEP 1: Photo & Category
                 if (_currentStep == 1) ...[
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -604,7 +662,6 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // Pastel Category Grid Tiles
                   CivicCategoryTilesGrid(
                     selectedCategoryId: _category,
                     onSelectCategory: (catId) {
@@ -616,7 +673,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                 ],
 
-                // STEP 2: 100% Automatic GPS Location (No manual address input)
+                // STEP 2: Automatic GPS
                 if (_currentStep == 2) ...[
                   Text(
                     'Automatic GPS Geo-tagging',
@@ -629,7 +686,6 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // GPS Status Card
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(18),
@@ -705,7 +761,6 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Strict Blocker Notice if Outside Nagpur
                   if (!isNagpurValid)
                     Container(
                       padding: const EdgeInsets.all(14),
@@ -720,7 +775,7 @@ class _ReportScreenState extends State<ReportScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              '🚫 GPS position is outside Nagpur Municipal bounds (Lat: 21.04-21.26, Lng: 78.98-79.22). You CANNOT place a pin or submit a report here.',
+                              '🚫 GPS position is outside Nagpur Municipal bounds. You CANNOT place a pin or submit a report here.',
                               style: TextStyle(color: Colors.red[900], fontSize: 12, fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -761,7 +816,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                 ],
 
-                // STEP 3: Phone OTP Verification
+                // STEP 3: Real Supabase Phone OTP Authentication
                 if (_currentStep == 3) ...[
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -782,7 +837,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Blocks bot spam. Phone numbers are SHA-256 encrypted for citizen privacy.',
+                          'Phone numbers are SHA-256 encrypted for citizen privacy and authenticated via Supabase.',
                           style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
                         ),
                       ],
@@ -807,8 +862,10 @@ class _ReportScreenState extends State<ReportScreen> {
                         child: TextField(
                           controller: _phoneController,
                           keyboardType: TextInputType.phone,
+                          maxLength: 10,
                           decoration: InputDecoration(
-                            hintText: '9876543210',
+                            hintText: 'Enter 10-digit number',
+                            counterText: '',
                             filled: true,
                             fillColor: Colors.white,
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
@@ -817,21 +874,23 @@ class _ReportScreenState extends State<ReportScreen> {
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton(
-                        onPressed: _sendOtp,
+                        onPressed: (_isSendingOtp || _resendTimerSeconds > 0) ? null : _handleSendOtp,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFE65100),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('Send OTP'),
+                        child: _isSendingOtp
+                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : Text(_resendTimerSeconds > 0 ? '${_resendTimerSeconds}s' : 'Send OTP'),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
-                  if (_otpSent) ...[
-                    Text('Enter 6-Digit OTP', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700)),
+                  if (_otpSent && !_isPhoneVerified) ...[
+                    Text('Enter 6-Digit OTP Code', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 6),
                     Row(
                       children: [
@@ -840,8 +899,12 @@ class _ReportScreenState extends State<ReportScreen> {
                             controller: _otpController,
                             keyboardType: TextInputType.number,
                             textAlign: TextAlign.center,
+                            maxLength: 6,
                             style: GoogleFonts.inter(fontSize: 18, letterSpacing: 8, fontWeight: FontWeight.bold),
                             decoration: InputDecoration(
+                              hintText: '• • • • • •',
+                              hintStyle: const TextStyle(letterSpacing: 4, color: Colors.grey),
+                              counterText: '',
                               filled: true,
                               fillColor: Colors.white,
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
@@ -850,8 +913,10 @@ class _ReportScreenState extends State<ReportScreen> {
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton.icon(
-                          onPressed: _verifyOtp,
-                          icon: const Icon(Icons.check, size: 16),
+                          onPressed: _isVerifyingOtp ? null : _handleVerifyOtp,
+                          icon: _isVerifyingOtp
+                              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.check, size: 16),
                           label: const Text('Verify'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green[600],
@@ -864,6 +929,14 @@ class _ReportScreenState extends State<ReportScreen> {
                     ),
                   ],
 
+                  if (_otpErrorMessage != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 10),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(10)),
+                      child: Text(_otpErrorMessage!, style: TextStyle(color: Colors.red[800], fontSize: 12, fontWeight: FontWeight.w600)),
+                    ),
+
                   if (_isPhoneVerified)
                     Container(
                       margin: const EdgeInsets.only(top: 14),
@@ -873,10 +946,9 @@ class _ReportScreenState extends State<ReportScreen> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.green[300]!),
                       ),
-                      child: Text('✓ Verified Citizen (SHA-256 Encrypted)', style: TextStyle(color: Colors.green[900], fontWeight: FontWeight.bold)),
+                      child: Text('✓ Verified Citizen (+91 ${_phoneController.text})', style: TextStyle(color: Colors.green[900], fontWeight: FontWeight.bold)),
                     ),
 
-                  // 7-Day 50m Tamper-Proof Rate Limit Error Banner
                   if (_rateLimitError != null)
                     Container(
                       margin: const EdgeInsets.only(top: 14),
@@ -903,7 +975,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
                 const SizedBox(height: 30),
 
-                // Step Navigation Buttons (Strictly Disables Continue if Location is outside Nagpur)
+                // Navigation Buttons
                 Row(
                   children: [
                     if (_currentStep > 1)

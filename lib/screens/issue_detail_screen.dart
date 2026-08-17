@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../models/complaint.dart';
 import '../services/complaints_repository.dart';
+import '../services/supabase_service.dart';
 import '../utils/geo_utils.dart';
 
 class IssueDetailScreen extends StatefulWidget {
@@ -37,6 +38,9 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     final phoneController = TextEditingController(text: _repo.currentCitizenPhone ?? '');
     final otpController = TextEditingController();
     bool otpSent = false;
+    bool isSending = false;
+    bool isVerifying = false;
+    String? modalError;
 
     showModalBottomSheet(
       context: context,
@@ -91,7 +95,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                             style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            'Verify via phone OTP to corroborate #${complaint.id}',
+                            'Authenticate via phone OTP to corroborate #${complaint.id}',
                             style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
                           ),
                         ],
@@ -120,7 +124,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                         keyboardType: TextInputType.phone,
                         maxLength: 10,
                         decoration: InputDecoration(
-                          hintText: '9876543210',
+                          hintText: 'Enter 10-digit number',
                           counterText: '',
                           filled: true,
                           fillColor: const Color(0xFFF8F9FA),
@@ -130,40 +134,54 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
-                      onPressed: () {
-                        final clean = phoneController.text.replaceAll(RegExp(r'\D'), '');
-                        if (clean.length < 10) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter 10-digit number')),
-                          );
-                          return;
-                        }
-                        setModalState(() {
-                          otpSent = true;
-                          otpController.text = '849201';
-                        });
-                      },
+                      onPressed: isSending
+                          ? null
+                          : () async {
+                              final clean = phoneController.text.replaceAll(RegExp(r'\D'), '');
+                              if (clean.length < 10) {
+                                setModalState(() => modalError = 'Please enter a valid 10-digit number');
+                                return;
+                              }
+                              setModalState(() {
+                                isSending = true;
+                                modalError = null;
+                              });
+
+                              await SupabaseConfig.sendPhoneOtp(clean);
+
+                              setModalState(() {
+                                isSending = false;
+                                otpSent = true;
+                                otpController.clear(); // Field starts completely blank!
+                              });
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFE65100),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Send OTP'),
+                      child: isSending
+                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Send OTP'),
                     ),
                   ],
                 ),
 
                 if (otpSent) ...[
                   const SizedBox(height: 14),
-                  Text('Enter 6-Digit OTP', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+                  Text('Enter 6-Digit OTP Code', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
                   TextField(
                     controller: otpController,
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,
+                    maxLength: 6,
                     style: GoogleFonts.inter(fontSize: 18, letterSpacing: 8, fontWeight: FontWeight.bold),
                     decoration: InputDecoration(
+                      hintText: '• • • • • •',
+                      hintStyle: const TextStyle(letterSpacing: 4, color: Colors.grey),
+                      counterText: '',
                       filled: true,
                       fillColor: const Color(0xFFF8F9FA),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
@@ -173,27 +191,40 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        if (otpController.text.length < 4) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter OTP')),
-                          );
-                          return;
-                        }
-                        // 1. Set citizen login session
-                        _repo.setCitizenSession(phoneController.text);
-                        // 2. Corroborate complaint
-                        _repo.upvoteComplaint(complaint.id, _repo.currentCitizenPhoneHash!);
+                      onPressed: isVerifying
+                          ? null
+                          : () async {
+                              final code = otpController.text.trim();
+                              if (code.length < 4) {
+                                setModalState(() => modalError = 'Please enter the 6-digit OTP code.');
+                                return;
+                              }
 
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(this.context).showSnackBar(
-                          SnackBar(
-                            content: Text('✓ Corroborated! Priority boosted to ${complaint.reportCount + 1} citizen reports.'),
-                            backgroundColor: Colors.green[700],
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.check_circle, size: 18),
+                              setModalState(() {
+                                isVerifying = true;
+                                modalError = null;
+                              });
+
+                              final res = await SupabaseConfig.verifyPhoneOtp(phoneController.text, code);
+
+                              setModalState(() => isVerifying = false);
+
+                              if (res['success']) {
+                                // 1. Set citizen login session
+                                _repo.setCitizenSession(phoneController.text);
+                                // 2. Corroborate complaint
+                                _repo.upvoteComplaint(complaint.id, _repo.currentCitizenPhoneHash!);
+
+                                if (ctx.mounted) {
+                                  Navigator.pop(ctx);
+                                }
+                              } else {
+                                setModalState(() => modalError = res['message']);
+                              }
+                            },
+                      icon: isVerifying
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.check_circle, size: 18),
                       label: const Text('Verify & Corroborate (+1)'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green[600],
@@ -204,6 +235,14 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                     ),
                   ),
                 ],
+
+                if (modalError != null)
+                  Container(
+                    margin: const EdgeInsets.only(top: 10),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(10)),
+                    child: Text(modalError!, style: TextStyle(color: Colors.red[800], fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
               ],
             ),
           );
@@ -543,7 +582,6 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                         const SizedBox(height: 14),
                         Row(
                           children: [
-                            // Before
                             Expanded(
                               child: Column(
                                 children: [
@@ -565,7 +603,6 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            // After
                             Expanded(
                               child: Column(
                                 children: [
@@ -626,7 +663,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
         ),
       ),
 
-      // 8. Fixed Bottom Action Bar (Single Clean "+1 Corroborate" Button)
+      // 8. Fixed Bottom Action Bar
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
