@@ -10,6 +10,7 @@ import '../services/vision_classifier.dart';
 import '../services/location_service.dart';
 import '../services/supabase_service.dart';
 import '../utils/geo_utils.dart';
+import '../utils/civic_theme.dart';
 import '../widgets/civic_category_tiles.dart';
 
 const List<Map<String, String>> kSampleCivicPhotos = [
@@ -473,9 +474,9 @@ class _ReportScreenState extends State<ReportScreen> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE65100),
+                backgroundColor: CivicTheme.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: const Text('View in Grievances'),
             ),
@@ -495,16 +496,10 @@ class _ReportScreenState extends State<ReportScreen> {
       );
     }
 
-    return Image.network(
+    return buildCivicPhoto(
       _photoUrl,
       height: 200,
       width: double.infinity,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(
-        height: 200,
-        color: Colors.grey[200],
-        child: const Center(child: Icon(Icons.broken_image, size: 40)),
-      ),
     );
   }
 
@@ -513,15 +508,15 @@ class _ReportScreenState extends State<ReportScreen> {
     final isNagpurValid = GeoUtils.isInsideNagpur(_lat, _lng);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFE65100),
+        backgroundColor: CivicTheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         title: Text(
           'File Civic Grievance (NMC)',
-          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
+          style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white),
         ),
         actions: [
           Center(
@@ -530,8 +525,8 @@ class _ReportScreenState extends State<ReportScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(40),
-                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white.withAlpha(25),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   'Step $_currentStep/3',
@@ -545,7 +540,7 @@ class _ReportScreenState extends State<ReportScreen> {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -554,7 +549,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   child: LinearProgressIndicator(
                     value: _currentStep / 3,
                     backgroundColor: Colors.grey[300],
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE65100)),
+                    valueColor: const AlwaysStoppedAnimation<Color>(CivicTheme.accent),
                     minHeight: 4,
                   ),
                 ),

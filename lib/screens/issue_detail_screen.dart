@@ -5,6 +5,7 @@ import '../models/complaint.dart';
 import '../services/complaints_repository.dart';
 import '../services/supabase_service.dart';
 import '../utils/geo_utils.dart';
+import '../utils/civic_theme.dart';
 
 class IssueDetailScreen extends StatefulWidget {
   final String complaintId;
@@ -323,16 +324,10 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
             // 1. Hero Image Section
             Stack(
               children: [
-                Image.network(
+                buildCivicPhoto(
                   complaint.photoUrl,
                   width: double.infinity,
                   height: 240,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 240,
-                    color: Colors.grey[300],
-                    child: const Center(child: Icon(Icons.broken_image, size: 48)),
-                  ),
                 ),
                 Positioned(
                   bottom: 12,
@@ -347,13 +342,13 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                           );
                         },
                         backgroundColor: Colors.white,
-                        child: const Icon(Icons.share, color: Color(0xFFE65100), size: 18),
+                        child: const Icon(Icons.share, color: CivicTheme.primary, size: 18),
                       ),
                       const SizedBox(width: 8),
                       FloatingActionButton.small(
                         heroTag: 'upvote_hero',
                         onPressed: isResolved ? null : () => _handleCorroborateTap(complaint),
-                        backgroundColor: isCorroborated ? Colors.green[700] : const Color(0xFFE65100),
+                        backgroundColor: isCorroborated ? Colors.green[700] : CivicTheme.primary,
                         child: Icon(
                           isCorroborated ? Icons.check : Icons.thumb_up,
                           color: Colors.white,
@@ -585,14 +580,11 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                             Expanded(
                               child: Column(
                                 children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Image.network(
-                                      complaint.photoUrl,
-                                      height: 120,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                    ),
+                                  buildCivicPhoto(
+                                    complaint.photoUrl,
+                                    height: 120,
+                                    width: double.infinity,
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
@@ -607,28 +599,25 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                               child: Column(
                                 children: [
                                   if (isResolved && complaint.resolvedPhotoUrl != null)
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.network(
-                                        complaint.resolvedPhotoUrl!,
-                                        height: 120,
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
-                                      ),
+                                    buildCivicPhoto(
+                                      complaint.resolvedPhotoUrl!,
+                                      height: 120,
+                                      width: double.infinity,
+                                      borderRadius: BorderRadius.circular(8),
                                     )
                                   else
                                     Container(
                                       height: 120,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFFFF0E5),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: const Color(0xFFE65100)),
+                                        color: const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: CivicTheme.border),
                                       ),
                                       child: Center(
                                         child: Column(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            const Icon(Icons.build, color: Color(0xFFE65100), size: 28),
+                                            const Icon(Icons.build_outlined, color: CivicTheme.primary, size: 28),
                                             const SizedBox(height: 4),
                                             Text(
                                               'Pending Repair',

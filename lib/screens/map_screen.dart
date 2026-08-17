@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/complaint.dart';
 import '../utils/geo_utils.dart';
+import '../utils/civic_theme.dart';
 import '../services/complaints_repository.dart';
 import '../services/location_service.dart';
 import 'issue_detail_screen.dart';
@@ -87,7 +88,7 @@ class _MapScreenState extends State<MapScreen> {
             content: Text(
               'Your GPS (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}) is outside Nagpur limits. Centering at Zero Mile Stone.',
             ),
-            backgroundColor: Colors.orange[800],
+            backgroundColor: CivicTheme.accent,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -99,7 +100,7 @@ class _MapScreenState extends State<MapScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('📍 Live GPS: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} (Nagpur)'),
+          content: Text('Live GPS Locked: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} (Nagpur)'),
           backgroundColor: Colors.green[700],
         ),
       );
@@ -118,19 +119,19 @@ class _MapScreenState extends State<MapScreen> {
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             boxShadow: [
               BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, -4)),
             ],
           ),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
                 child: Container(
-                  width: 40,
+                  width: 36,
                   height: 4,
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
@@ -138,24 +139,15 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.network(
-                      complaint.photoUrl,
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 80,
-                        height: 80,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.broken_image, color: Colors.grey),
-                      ),
-                    ),
+                  buildCivicPhoto(
+                    complaint.photoUrl,
+                    width: 80,
+                    height: 80,
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -167,16 +159,16 @@ class _MapScreenState extends State<MapScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFF0E5),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFFE65100)),
+                                color: CivicTheme.primary.withAlpha(20),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: CivicTheme.primary.withAlpha(60)),
                               ),
                               child: Text(
                                 complaint.category,
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFFE65100),
+                                  color: CivicTheme.primary,
                                 ),
                               ),
                             ),
@@ -189,7 +181,7 @@ class _MapScreenState extends State<MapScreen> {
                                     : complaint.status == ComplaintStatus.inProgress
                                         ? Colors.orange[50]
                                         : Colors.red[50],
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 complaint.status.displayName,
@@ -212,22 +204,22 @@ class _MapScreenState extends State<MapScreen> {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.outfit(
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF1A1C1C),
+                            color: CivicTheme.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(Icons.location_on, size: 14, color: Color(0xFFE65100)),
+                            const Icon(Icons.location_on, size: 14, color: CivicTheme.accent),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 complaint.landmark,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
+                                style: GoogleFonts.inter(fontSize: 12, color: CivicTheme.textSecondary),
                               ),
                             ),
                           ],
@@ -243,17 +235,17 @@ class _MapScreenState extends State<MapScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.red[50],
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.red[200]!),
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFCBD5E1)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.local_fire_department, size: 16, color: Colors.red),
+                        const Icon(Icons.people_outline, size: 16, color: CivicTheme.primary),
                         const SizedBox(width: 4),
                         Text(
-                          '${complaint.reportCount} Reported',
-                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red[800]),
+                          '${complaint.reportCount} Corroborated',
+                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: CivicTheme.primary),
                         ),
                       ],
                     ),
@@ -272,9 +264,9 @@ class _MapScreenState extends State<MapScreen> {
                     icon: const Icon(Icons.visibility, size: 16),
                     label: const Text('Inspect Details'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE65100),
+                      backgroundColor: CivicTheme.primary,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
                   ),
@@ -325,17 +317,12 @@ class _MapScreenState extends State<MapScreen> {
             ),
             MarkerLayer(
               markers: filtered.map((c) {
-                Color pinColor = Colors.red;
+                Color pinColor = CivicTheme.statusOpen;
                 if (c.status == ComplaintStatus.inProgress) {
-                  pinColor = const Color(0xFFE65100);
+                  pinColor = CivicTheme.statusInProgress;
                 } else if (c.status == ComplaintStatus.resolved) {
-                  pinColor = const Color(0xFF10B981);
+                  pinColor = CivicTheme.statusResolved;
                 }
-
-                final cat = kCivicCategories.firstWhere(
-                  (cat) => cat.id.toLowerCase() == c.category.toLowerCase(),
-                  orElse: () => kCivicCategories.last,
-                );
 
                 return Marker(
                   point: LatLng(c.lat, c.lng),
@@ -347,8 +334,8 @@ class _MapScreenState extends State<MapScreen> {
                       alignment: Alignment.center,
                       children: [
                         Container(
-                          width: 38,
-                          height: 38,
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
                             color: pinColor,
                             shape: BoxShape.circle,
@@ -358,9 +345,10 @@ class _MapScreenState extends State<MapScreen> {
                             ],
                           ),
                           child: Center(
-                            child: Text(
-                              cat.icon,
-                              style: const TextStyle(fontSize: 16),
+                            child: Icon(
+                              _getCategoryIcon(c.category),
+                              color: Colors.white,
+                              size: 18,
                             ),
                           ),
                         ),
@@ -371,7 +359,7 @@ class _MapScreenState extends State<MapScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                               decoration: BoxDecoration(
-                                color: Colors.red[700],
+                                color: CivicTheme.accent,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(color: Colors.white, width: 1.5),
                               ),
@@ -404,26 +392,25 @@ class _MapScreenState extends State<MapScreen> {
             children: [
               // Search Input Box
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Colors.grey[200]!),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: CivicTheme.border),
                   boxShadow: const [
-                    BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 3)),
+                    BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
                   ],
                 ),
                 child: Row(
                   children: [
-                    const SizedBox(width: 4),
-                    const Icon(Icons.search, size: 20, color: Colors.grey),
+                    const Icon(Icons.search, size: 20, color: CivicTheme.textSecondary),
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         onChanged: _handleLocationSearch,
-                        style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF1A1C1C)),
+                        style: GoogleFonts.inter(fontSize: 13, color: CivicTheme.textPrimary),
                         decoration: InputDecoration(
-                          hintText: 'Search Nagpur location (Sitabuldi, Sadar...)',
+                          hintText: 'Search location (Sitabuldi, Dharampeth...)',
                           hintStyle: GoogleFonts.inter(fontSize: 13, color: Colors.grey[400]),
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(vertical: 10),
@@ -437,9 +424,9 @@ class _MapScreenState extends State<MapScreen> {
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(color: Color(0xFFE65100), strokeWidth: 2),
+                              child: CircularProgressIndicator(color: CivicTheme.accent, strokeWidth: 2),
                             )
-                          : const Icon(Icons.my_location, color: Color(0xFFE65100), size: 22),
+                          : const Icon(Icons.my_location, color: CivicTheme.accent, size: 22),
                       onPressed: _isDetecting ? null : _detectUserLocation,
                     ),
                   ],
@@ -449,28 +436,29 @@ class _MapScreenState extends State<MapScreen> {
               // Search Suggestions Dropdown
               if (_isSearching && _locationSuggestions.isNotEmpty)
                 Container(
-                  margin: const EdgeInsets.only(top: 8),
+                  margin: const EdgeInsets.only(top: 6),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: CivicTheme.border),
                     boxShadow: const [
-                      BoxShadow(color: Colors.black12, blurRadius: 10),
+                      BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
                     ],
                   ),
                   child: Column(
-                    children: _locationSuggestions.map((loc) {
+                    children: _locationSuggestions.take(4).map((loc) {
                       return ListTile(
                         dense: true,
-                        leading: const Icon(Icons.location_on, size: 18, color: Color(0xFFE65100)),
-                        title: Text(loc.name, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+                        leading: const Icon(Icons.location_on, color: CivicTheme.accent, size: 18),
+                        title: Text(loc.name, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
+                        subtitle: Text(loc.area, style: GoogleFonts.inter(fontSize: 10, color: Colors.grey[600])),
                         onTap: () => _selectNagpurLocation(loc),
                       );
                     }).toList(),
                   ),
                 ),
 
-              // Spacing
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
 
               // Category Filter Chips
               SingleChildScrollView(
@@ -480,13 +468,20 @@ class _MapScreenState extends State<MapScreen> {
                     _buildFilterChip('All', 'all', _selectedCategory == 'all', () {
                       setState(() => _selectedCategory = 'all');
                     }),
-                    ...kCivicCategories.map((cat) {
-                      return _buildFilterChip(
-                        '${cat.icon} ${cat.id}',
-                        cat.id,
-                        _selectedCategory.toLowerCase() == cat.id.toLowerCase(),
-                        () => setState(() => _selectedCategory = cat.id),
-                      );
+                    _buildFilterChip('Pothole', 'Pothole', _selectedCategory == 'Pothole', () {
+                      setState(() => _selectedCategory = 'Pothole');
+                    }),
+                    _buildFilterChip('Garbage', 'Garbage', _selectedCategory == 'Garbage', () {
+                      setState(() => _selectedCategory = 'Garbage');
+                    }),
+                    _buildFilterChip('Water Leak', 'Water Leak', _selectedCategory == 'Water Leak', () {
+                      setState(() => _selectedCategory = 'Water Leak');
+                    }),
+                    _buildFilterChip('Streetlight', 'Streetlight', _selectedCategory == 'Streetlight', () {
+                      setState(() => _selectedCategory = 'Streetlight');
+                    }),
+                    _buildFilterChip('Other', 'Other', _selectedCategory == 'Other', () {
+                      setState(() => _selectedCategory = 'Other');
                     }),
                   ],
                 ),
@@ -503,19 +498,20 @@ class _MapScreenState extends State<MapScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: CivicTheme.border),
               boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 8),
+                BoxShadow(color: Colors.black12, blurRadius: 6),
               ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildLegendDot(Colors.red, 'Open'),
+                _buildLegendDot(CivicTheme.statusOpen, 'Open'),
                 const SizedBox(width: 8),
-                _buildLegendDot(const Color(0xFFE65100), 'In Progress'),
+                _buildLegendDot(CivicTheme.statusInProgress, 'In Progress'),
                 const SizedBox(width: 8),
-                _buildLegendDot(const Color(0xFF10B981), 'Resolved'),
+                _buildLegendDot(CivicTheme.statusResolved, 'Resolved'),
               ],
             ),
           ),
@@ -524,29 +520,44 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'pothole':
+        return Icons.construction;
+      case 'garbage':
+        return Icons.delete_outline;
+      case 'water leak':
+        return Icons.water_drop_outlined;
+      case 'streetlight':
+        return Icons.lightbulb_outline;
+      default:
+        return Icons.warning_amber_rounded;
+    }
+  }
+
   Widget _buildFilterChip(String label, String value, bool isSelected, VoidCallback onTap) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.only(right: 6),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFE65100) : Colors.white,
-            borderRadius: BorderRadius.circular(14),
+            color: isSelected ? CivicTheme.primary : Colors.white,
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: isSelected ? const Color(0xFFE65100) : Colors.grey[200]!,
+              color: isSelected ? CivicTheme.primary : CivicTheme.border,
             ),
             boxShadow: const [
-              BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+              BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1)),
             ],
           ),
           child: Text(
             label,
             style: GoogleFonts.inter(
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: isSelected ? Colors.white : Colors.grey[800],
+              color: isSelected ? Colors.white : CivicTheme.textPrimary,
             ),
           ),
         ),
@@ -559,7 +570,7 @@ class _MapScreenState extends State<MapScreen> {
       children: [
         Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[700])),
+        Text(label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: CivicTheme.textSecondary)),
       ],
     );
   }
