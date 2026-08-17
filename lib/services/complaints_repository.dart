@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/complaint.dart';
 import '../data/seed_data.dart';
 import '../utils/geo_utils.dart';
@@ -18,6 +19,7 @@ class ComplaintsRepository extends ChangeNotifier {
 
   ComplaintsRepository._internal() {
     _complaints = List.from(kInitialSeedComplaints);
+    _loadSavedCitizenSession();
     _initSupabaseSync();
   }
 
@@ -27,9 +29,43 @@ class ComplaintsRepository extends ChangeNotifier {
   String? get currentCitizenPhoneHash => _citizenPhoneHash;
   bool get isCitizenLoggedIn => _citizenPhoneHash != null && _citizenPhoneHash!.isNotEmpty;
 
-  void setCitizenSession(String phone) {
-    _citizenPhone = phone;
-    _citizenPhoneHash = GeoUtils.hashPhoneNumber(phone);
+  /// Load persisted 1-time login from device storage
+  Future<void> _loadSavedCitizenSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedPhone = prefs.getString('nagpur_citizen_phone');
+      if (savedPhone != null && savedPhone.isNotEmpty) {
+        _citizenPhone = savedPhone;
+        _citizenPhoneHash = GeoUtils.hashPhoneNumber(savedPhone);
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  /// Persist citizen session permanently on the device
+  Future<void> setCitizenSession(String phone) async {
+    final clean = phone.replaceAll(RegExp(r'\D'), '');
+    _citizenPhone = clean;
+    _citizenPhoneHash = GeoUtils.hashPhoneNumber(clean);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('nagpur_citizen_phone', clean);
+    } catch (_) {}
+
+    notifyListeners();
+  }
+
+  /// Citizen logout / switch phone
+  Future<void> logoutCitizen() async {
+    _citizenPhone = null;
+    _citizenPhoneHash = null;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('nagpur_citizen_phone');
+    } catch (_) {}
+
     notifyListeners();
   }
 

@@ -81,7 +81,7 @@ class OfficialDrawer extends StatelessWidget {
                   ),
                   child: Text(
                     repo.isCitizenLoggedIn
-                        ? 'Citizen: +91 ${repo.currentCitizenPhone}'
+                        ? '✓ Verified Citizen: +91 ${repo.currentCitizenPhone}'
                         : 'Nagpur Setu • Public Citizen Portal',
                     style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
                   ),
@@ -119,6 +119,29 @@ class OfficialDrawer extends StatelessWidget {
                     onOpenReport();
                   },
                 ),
+
+                if (repo.isCitizenLoggedIn) ...[
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.phone_android, color: Colors.green, size: 22),
+                    title: Text(
+                      'Logged in: +91 ${repo.currentCitizenPhone}',
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green[900]),
+                    ),
+                    subtitle: Text('Tap to switch or change phone number', style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[600])),
+                    trailing: const Icon(Icons.logout, size: 18, color: Colors.red),
+                    onTap: () async {
+                      await repo.logoutCitizen();
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Logged out of citizen session.')),
+                        );
+                      }
+                    },
+                  ),
+                ],
+
                 const Divider(),
 
                 // Emergency Contacts section

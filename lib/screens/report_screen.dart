@@ -818,92 +818,103 @@ class _ReportScreenState extends State<ReportScreen> {
 
                 // STEP 3: Real Supabase Phone OTP Authentication
                 if (_currentStep == 3) ...[
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.security, color: Colors.green, size: 22),
-                            const SizedBox(width: 8),
-                            Text('Citizen Mobile Authentication', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Phone numbers are SHA-256 encrypted for citizen privacy and authenticated via Supabase.',
-                          style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Text(
-                    'Mobile Number (India)',
-                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                        decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
-                        child: Text('+91', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                  if (_isPhoneVerified) ...[
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.green[300]!),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          maxLength: 10,
-                          decoration: InputDecoration(
-                            hintText: 'Enter 10-digit number',
-                            counterText: '',
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.verified_user, color: Colors.green, size: 28),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  '✓ Authenticated Citizen (+91 ${_phoneController.text})',
+                                  style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[900]),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'One-Time Citizen Login Active. You do NOT need to enter your phone number or OTP again.',
+                            style: GoogleFonts.inter(fontSize: 12, color: Colors.green[900], height: 1.4),
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              await _repo.logoutCitizen();
+                              setState(() {
+                                _isPhoneVerified = false;
+                                _phoneController.clear();
+                                _otpController.clear();
+                                _otpSent = false;
+                              });
+                            },
+                            icon: const Icon(Icons.switch_account, size: 14, color: Color(0xFFE65100)),
+                            label: const Text('Switch / Change Phone Number', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFE65100))),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFE65100)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: (_isSendingOtp || _resendTimerSeconds > 0) ? null : _handleSendOtp,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE65100),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: _isSendingOtp
-                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : Text(_resendTimerSeconds > 0 ? '${_resendTimerSeconds}s' : 'Send OTP'),
+                    ),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: Colors.grey[200]!),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.security, color: Colors.green, size: 22),
+                              const SizedBox(width: 8),
+                              Text('1-Time Citizen Authentication', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Authenticate once. Your verified session is securely remembered so you never have to re-enter your number.',
+                            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
-                  if (_otpSent && !_isPhoneVerified) ...[
-                    Text('Enter 6-Digit OTP Code', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700)),
+                    Text(
+                      'Mobile Number (India)',
+                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
+                          child: Text('+91', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: TextField(
-                            controller: _otpController,
-                            keyboardType: TextInputType.number,
-                            textAlign: TextAlign.center,
-                            maxLength: 6,
-                            style: GoogleFonts.inter(fontSize: 18, letterSpacing: 8, fontWeight: FontWeight.bold),
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            maxLength: 10,
                             decoration: InputDecoration(
-                              hintText: '• • • • • •',
-                              hintStyle: const TextStyle(letterSpacing: 4, color: Colors.grey),
+                              hintText: 'Enter 10-digit number',
                               counterText: '',
                               filled: true,
                               fillColor: Colors.white,
@@ -912,21 +923,61 @@ class _ReportScreenState extends State<ReportScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        ElevatedButton.icon(
-                          onPressed: _isVerifyingOtp ? null : _handleVerifyOtp,
-                          icon: _isVerifyingOtp
-                              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Icon(Icons.check, size: 16),
-                          label: const Text('Verify'),
+                        ElevatedButton(
+                          onPressed: (_isSendingOtp || _resendTimerSeconds > 0) ? null : _handleSendOtp,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green[600],
+                            backgroundColor: const Color(0xFFE65100),
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
+                          child: _isSendingOtp
+                              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : Text(_resendTimerSeconds > 0 ? '${_resendTimerSeconds}s' : 'Send OTP'),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+
+                    if (_otpSent && !_isPhoneVerified) ...[
+                      Text('Enter 6-Digit OTP Code', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _otpController,
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.center,
+                              maxLength: 6,
+                              style: GoogleFonts.inter(fontSize: 18, letterSpacing: 8, fontWeight: FontWeight.bold),
+                              decoration: InputDecoration(
+                                hintText: '• • • • • •',
+                                hintStyle: const TextStyle(letterSpacing: 4, color: Colors.grey),
+                                counterText: '',
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: _isVerifyingOtp ? null : _handleVerifyOtp,
+                            icon: _isVerifyingOtp
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.check, size: 16),
+                            label: const Text('Verify'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[600],
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
 
                   if (_otpErrorMessage != null)
