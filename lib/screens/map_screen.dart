@@ -85,7 +85,7 @@ class _MapScreenState extends State<MapScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Your GPS location (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}) is outside Nagpur city limits. Centering at Zero Mile Stone, Nagpur.',
+              'Your GPS (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}) is outside Nagpur limits. Centering at Zero Mile Stone.',
             ),
             backgroundColor: Colors.orange[800],
             duration: const Duration(seconds: 4),
@@ -99,7 +99,7 @@ class _MapScreenState extends State<MapScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('📍 Live GPS Detected: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} (Nagpur)'),
+          content: Text('📍 Live GPS: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} (Nagpur)'),
           backgroundColor: Colors.green[700],
         ),
       );
@@ -169,14 +169,14 @@ class _MapScreenState extends State<MapScreen> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFFF0E5),
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFFFF6B00)),
+                                border: Border.all(color: const Color(0xFFE65100)),
                               ),
                               child: Text(
                                 complaint.category,
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFFFF6B00),
+                                  color: const Color(0xFFE65100),
                                 ),
                               ),
                             ),
@@ -220,7 +220,7 @@ class _MapScreenState extends State<MapScreen> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(Icons.location_on, size: 14, color: Color(0xFFFF6B00)),
+                            const Icon(Icons.location_on, size: 14, color: Color(0xFFE65100)),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
@@ -272,7 +272,7 @@ class _MapScreenState extends State<MapScreen> {
                     icon: const Icon(Icons.visibility, size: 16),
                     label: const Text('Inspect Details'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF6B00),
+                      backgroundColor: const Color(0xFFE65100),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -327,7 +327,7 @@ class _MapScreenState extends State<MapScreen> {
               markers: filtered.map((c) {
                 Color pinColor = Colors.red;
                 if (c.status == ComplaintStatus.inProgress) {
-                  pinColor = const Color(0xFFFF6B00);
+                  pinColor = const Color(0xFFE65100);
                 } else if (c.status == ComplaintStatus.resolved) {
                   pinColor = const Color(0xFF10B981);
                 }
@@ -394,9 +394,9 @@ class _MapScreenState extends State<MapScreen> {
           ],
         ),
 
-        // 2. Floating Search Bar + Perfectly Spaced Category Options Below
+        // 2. Floating Search Bar + Government Category Filter Tiles Below
         Positioned(
-          top: 14,
+          top: 10,
           left: 12,
           right: 12,
           child: Column(
@@ -407,9 +407,10 @@ class _MapScreenState extends State<MapScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.grey[200]!),
                   boxShadow: const [
-                    BoxShadow(color: Colors.black12, blurRadius: 14, offset: Offset(0, 4)),
+                    BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 3)),
                   ],
                 ),
                 child: Row(
@@ -436,9 +437,9 @@ class _MapScreenState extends State<MapScreen> {
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(color: Color(0xFFFF6B00), strokeWidth: 2),
+                              child: CircularProgressIndicator(color: Color(0xFFE65100), strokeWidth: 2),
                             )
-                          : const Icon(Icons.my_location, color: Color(0xFFFF6B00), size: 22),
+                          : const Icon(Icons.my_location, color: Color(0xFFE65100), size: 22),
                       onPressed: _isDetecting ? null : _detectUserLocation,
                     ),
                   ],
@@ -460,7 +461,7 @@ class _MapScreenState extends State<MapScreen> {
                     children: _locationSuggestions.map((loc) {
                       return ListTile(
                         dense: true,
-                        leading: const Icon(Icons.location_on, size: 18, color: Color(0xFFFF6B00)),
+                        leading: const Icon(Icons.location_on, size: 18, color: Color(0xFFE65100)),
                         title: Text(loc.name, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
                         onTap: () => _selectNagpurLocation(loc),
                       );
@@ -468,8 +469,8 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
 
-              // Consistent Clean Gap (12px)
-              const SizedBox(height: 12),
+              // Spacing
+              const SizedBox(height: 10),
 
               // Category Filter Chips
               SingleChildScrollView(
@@ -512,7 +513,7 @@ class _MapScreenState extends State<MapScreen> {
               children: [
                 _buildLegendDot(Colors.red, 'Open'),
                 const SizedBox(width: 8),
-                _buildLegendDot(const Color(0xFFFF6B00), 'In Progress'),
+                _buildLegendDot(const Color(0xFFE65100), 'In Progress'),
                 const SizedBox(width: 8),
                 _buildLegendDot(const Color(0xFF10B981), 'Resolved'),
               ],
@@ -529,12 +530,15 @@ class _MapScreenState extends State<MapScreen> {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFFF6B00) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: isSelected ? const Color(0xFFE65100) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? const Color(0xFFE65100) : Colors.grey[200]!,
+            ),
             boxShadow: const [
-              BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
+              BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
             ],
           ),
           child: Text(

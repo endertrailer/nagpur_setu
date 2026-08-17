@@ -5,6 +5,7 @@ import '../services/complaints_repository.dart';
 import '../services/vision_classifier.dart';
 import '../services/location_service.dart';
 import '../utils/geo_utils.dart';
+import '../widgets/civic_category_tiles.dart';
 
 class ReportScreen extends StatefulWidget {
   final VoidCallback? onReportSuccess;
@@ -110,7 +111,7 @@ class _ReportScreenState extends State<ReportScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Detected location (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}) is outside Nagpur city limits. Please select a spot inside Nagpur.',
+              'Detected location (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}) is outside Nagpur limits. Please choose a spot inside Nagpur.',
             ),
             backgroundColor: Colors.red[800],
             duration: const Duration(seconds: 4),
@@ -123,7 +124,7 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() {
       _lat = lat;
       _lng = lng;
-      _landmarkController.text = 'Verified GPS Location, Nagpur (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})';
+      _landmarkController.text = 'GPS Captured (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})';
     });
 
     if (mounted) {
@@ -230,7 +231,7 @@ class _ReportScreenState extends State<ReportScreen> {
           children: [
             const Icon(Icons.check_circle, color: Colors.green, size: 28),
             const SizedBox(width: 8),
-            Text('Report Submitted!', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            Text('Grievance Registered!', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
           ],
         ),
         content: Text(
@@ -241,12 +242,13 @@ class _ReportScreenState extends State<ReportScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
+              Navigator.pop(context);
               if (widget.onReportSuccess != null) {
                 widget.onReportSuccess!();
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF6B00),
+              backgroundColor: const Color(0xFFE65100),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
@@ -262,22 +264,30 @@ class _ReportScreenState extends State<ReportScreen> {
     final isNagpurValid = GeoUtils.isInsideNagpur(_lat, _lng);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFDFAF6),
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
+        backgroundColor: const Color(0xFFE65100),
+        foregroundColor: Colors.white,
+        elevation: 0,
         centerTitle: true,
         title: Text(
-          'Report Civic Issue',
-          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1A1C1C)),
+          'File Civic Grievance (NMC)',
+          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
         ),
         actions: [
           Center(
             child: Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: Text(
-                'Step $_currentStep/3',
-                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[500]),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(40),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Step $_currentStep/3',
+                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
               ),
             ),
           ),
@@ -295,8 +305,8 @@ class _ReportScreenState extends State<ReportScreen> {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: _currentStep / 3,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF6B00)),
+                    backgroundColor: Colors.grey[300],
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE65100)),
                     minHeight: 4,
                   ),
                 ),
@@ -305,8 +315,8 @@ class _ReportScreenState extends State<ReportScreen> {
                 // STEP 1: Photo & Category
                 if (_currentStep == 1) ...[
                   Text(
-                    'Photo Proof',
-                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF1A1C1C)),
+                    '1. Upload Photo Proof',
+                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF1A1C1C)),
                   ),
                   const SizedBox(height: 8),
 
@@ -316,7 +326,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       children: [
                         Image.network(
                           _photoUrl,
-                          height: 200,
+                          height: 190,
                           width: double.infinity,
                           fit: BoxFit.cover,
                         ),
@@ -325,7 +335,7 @@ class _ReportScreenState extends State<ReportScreen> {
                             child: Container(
                               color: Colors.black54,
                               child: const Center(
-                                child: CircularProgressIndicator(color: Color(0xFFFF6B00)),
+                                child: CircularProgressIndicator(color: Color(0xFFE65100)),
                               ),
                             ),
                           ),
@@ -340,19 +350,19 @@ class _ReportScreenState extends State<ReportScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFF0E5),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFFF6B00)),
+                        border: Border.all(color: const Color(0xFFE65100)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.auto_awesome, color: Color(0xFFFF6B00), size: 20),
+                          const Icon(Icons.auto_awesome, color: Color(0xFFE65100), size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'AI Suggested: ${_aiResult!.suggestedCategory} (${(_aiResult!.confidence * 100).round()}% match)',
-                                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFFF6B00)),
+                                  'AI Category Match: ${_aiResult!.suggestedCategory} (${(_aiResult!.confidence * 100).round()}% confidence)',
+                                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFE65100)),
                                 ),
                                 Text(
                                   _aiResult!.explanation,
@@ -364,50 +374,23 @@ class _ReportScreenState extends State<ReportScreen> {
                         ],
                       ),
                     ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
 
                   Text(
-                    'Select Category',
-                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF1A1C1C)),
+                    '2. Select Grievance Department',
+                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF1A1C1C)),
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: kCivicCategories.map((cat) {
-                      final isSelected = _category.toLowerCase() == cat.id.toLowerCase();
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() => _category = cat.id);
-                          _checkDuplicates();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFFFF6B00) : Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: isSelected ? const Color(0xFFFF6B00) : Colors.grey[300]!,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(cat.icon, style: const TextStyle(fontSize: 16)),
-                              const SizedBox(width: 6),
-                              Text(
-                                cat.id,
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.white : Colors.grey[800],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                  const SizedBox(height: 10),
+
+                  // Government Category Selection Tiles
+                  CivicCategoryTilesGrid(
+                    selectedCategoryId: _category,
+                    onSelectCategory: (catId) {
+                      if (catId != 'all') {
+                        setState(() => _category = catId);
+                        _checkDuplicates();
+                      }
+                    },
                   ),
                 ],
 
@@ -419,17 +402,17 @@ class _ReportScreenState extends State<ReportScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF0E5),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFFF6B00)),
+                      border: Border.all(color: const Color(0xFFE65100)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.my_location, color: Color(0xFFFF6B00), size: 24),
+                        const Icon(Icons.my_location, color: Color(0xFFE65100), size: 24),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Detect User GPS (Nagpur)', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text('Detect Citizen GPS (Nagpur)', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
                               Text('GPS: ${_lat.toStringAsFixed(4)}, ${_lng.toStringAsFixed(4)}', style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[600])),
                             ],
                           ),
@@ -438,17 +421,17 @@ class _ReportScreenState extends State<ReportScreen> {
                           onPressed: _isDetectingLocation ? null : _detectLocation,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFFFF6B00),
+                            foregroundColor: const Color(0xFFE65100),
                             elevation: 0,
-                            side: const BorderSide(color: Color(0xFFFF6B00)),
+                            side: const BorderSide(color: Color(0xFFE65100)),
                           ),
                           child: _isDetectingLocation
                               ? const SizedBox(
                                   width: 14,
                                   height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE65100)),
                                 )
-                              : const Text('Detect GPS', style: TextStyle(fontSize: 12)),
+                              : const Text('Detect GPS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -484,7 +467,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         children: _searchSuggestions.map((loc) {
                           return ListTile(
                             dense: true,
-                            leading: const Icon(Icons.location_on, color: Color(0xFFFF6B00), size: 18),
+                            leading: const Icon(Icons.location_on, color: Color(0xFFE65100), size: 18),
                             title: Text(loc.name, style: GoogleFonts.inter(fontSize: 12)),
                             onTap: () => _selectLocation(loc),
                           );
@@ -510,7 +493,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   const SizedBox(height: 16),
 
                   Text(
-                    'Issue Details',
+                    'Grievance Description',
                     style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 6),
@@ -518,7 +501,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     controller: _descriptionController,
                     maxLines: 2,
                     decoration: InputDecoration(
-                      hintText: 'Describe traffic impact or hazard...',
+                      hintText: 'Describe severity, risk to traffic or water wastage...',
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.grey[300]!)),
@@ -530,7 +513,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(12)),
-                      child: Text('❌ Location is outside Nagpur Municipal limits. Please select a spot inside Nagpur.', style: TextStyle(color: Colors.red[800], fontSize: 12)),
+                      child: Text('❌ Location is outside Nagpur limits. Nagpur Setu only accepts reports inside Nagpur.', style: TextStyle(color: Colors.red[800], fontSize: 12)),
                     ),
 
                   if (_duplicateAlert != null && isNagpurValid)
@@ -565,12 +548,12 @@ class _ReportScreenState extends State<ReportScreen> {
                           children: [
                             const Icon(Icons.security, color: Colors.green, size: 22),
                             const SizedBox(width: 8),
-                            Text('Citizen Phone Verification', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
+                            Text('Citizen Authentication', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
                           ],
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Phone OTP blocks spam bots. Numbers are SHA-256 hashed for privacy.',
+                          'Blocks bot spam. Phone numbers are SHA-256 encrypted for citizen privacy.',
                           style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
                         ),
                       ],
@@ -607,7 +590,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       ElevatedButton(
                         onPressed: _sendOtp,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6B00),
+                          backgroundColor: const Color(0xFFE65100),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -661,7 +644,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.green[300]!),
                       ),
-                      child: Text('✓ Phone Verified (SHA-256 Hashed)', style: TextStyle(color: Colors.green[900], fontWeight: FontWeight.bold)),
+                      child: Text('✓ Verified Citizen (SHA-256 Encrypted)', style: TextStyle(color: Colors.green[900], fontWeight: FontWeight.bold)),
                     ),
 
                   if (_errorMessage != null)
@@ -679,7 +662,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
                 const SizedBox(height: 30),
 
-                // Step Buttons
+                // Step Navigation Buttons
                 Row(
                   children: [
                     if (_currentStep > 1)
@@ -707,7 +690,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         icon: const Icon(Icons.arrow_forward, size: 16),
                         label: const Text('Continue'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6B00),
+                          backgroundColor: const Color(0xFFE65100),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -717,9 +700,9 @@ class _ReportScreenState extends State<ReportScreen> {
                       ElevatedButton.icon(
                         onPressed: _submitReport,
                         icon: const Icon(Icons.send, size: 16),
-                        label: const Text('Verify & Submit'),
+                        label: const Text('Register Grievance'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6B00),
+                          backgroundColor: const Color(0xFFE65100),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -737,7 +720,7 @@ class _ReportScreenState extends State<ReportScreen> {
               confettiController: _confettiController,
               blastDirectionality: BlastDirectionality.explosive,
               shouldLoop: false,
-              colors: const [Color(0xFFFF6B00), Colors.green, Colors.amber, Colors.blue],
+              colors: const [Color(0xFFE65100), Colors.green, Colors.amber, Colors.blue],
             ),
           ),
         ],

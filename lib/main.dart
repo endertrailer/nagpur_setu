@@ -5,7 +5,8 @@ import 'screens/issue_feed_screen.dart';
 import 'screens/admin_screen.dart';
 import 'screens/report_screen.dart';
 import 'screens/location_permission_gate_screen.dart';
-import 'services/complaints_repository.dart';
+import 'widgets/official_header.dart';
+import 'widgets/official_drawer.dart';
 import 'services/location_service.dart';
 
 void main() {
@@ -19,14 +20,14 @@ class NagpurSetuApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Nagpur Setu | Public Civic Platform',
+      title: 'Nagpur Municipal Corporation | Nagpur Setu',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFFDFAF6),
+        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF6B00),
-          primary: const Color(0xFFFF6B00),
+          seedColor: const Color(0xFFE65100),
+          primary: const Color(0xFFE65100),
           surface: Colors.white,
         ),
         textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme).copyWith(
@@ -35,9 +36,9 @@ class NagpurSetuApp extends StatelessWidget {
           titleLarge: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: const Color(0xFF1A1C1C)),
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
+          backgroundColor: Color(0xFFE65100),
+          foregroundColor: Colors.white,
           elevation: 0,
-          scrolledUnderElevation: 0.5,
         ),
       ),
       home: const AppRootPermissionGate(),
@@ -77,7 +78,7 @@ class _AppRootPermissionGateState extends State<AppRootPermissionGate> {
       return const Scaffold(
         backgroundColor: Color(0xFFFDFAF6),
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFFFF6B00)),
+          child: CircularProgressIndicator(color: Color(0xFFE65100)),
         ),
       );
     }
@@ -98,8 +99,8 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 0;
-  final ComplaintsRepository _repo = ComplaintsRepository();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  int _currentTab = 0; // 0: Live Map, 1: Grievances, 2: NMC Admin
 
   void _openReportScreen() {
     Navigator.push(
@@ -107,7 +108,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       MaterialPageRoute(
         builder: (_) => ReportScreen(
           onReportSuccess: () {
-            setState(() => _currentIndex = 0); // Switch to map
+            setState(() => _currentTab = 0); // Switch to map
           },
         ),
       ),
@@ -116,87 +117,33 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      MapScreen(onOpenReport: _openReportScreen),
-      const IssueFeedScreen(),
-      const AdminScreen(),
-    ];
-
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF0E5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text('🍊', style: TextStyle(fontSize: 18)),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Nagpur Setu',
-              style: GoogleFonts.outfit(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF1A1C1C),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Reset Demo Data',
-            icon: const Icon(Icons.refresh, color: Colors.grey, size: 20),
-            onPressed: () {
-              _repo.resetToDefaultSeed();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Database reset to fresh demo complaints!')),
-              );
-            },
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: ElevatedButton.icon(
-              onPressed: _openReportScreen,
-              icon: const Icon(Icons.add_circle, size: 16),
-              label: const Text('Report Issue', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF6B00),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
-        ],
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF8F9FA),
+      drawer: OfficialDrawer(
+        onSelectTab: (idx) => setState(() => _currentTab = idx),
+        onOpenReport: _openReportScreen,
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
-        backgroundColor: Colors.white,
-        elevation: 2,
-        indicatorColor: const Color(0xFFFFF0E5),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map, color: Color(0xFFFF6B00)),
-            label: 'Nagpur Map',
+      body: Column(
+        children: [
+          // 1. Official Government Curved Header with Tabs
+          OfficialHeader(
+            selectedTab: _currentTab,
+            onTabChanged: (idx) => setState(() => _currentTab = idx),
+            onOpenReport: _openReportScreen,
+            onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.feed_outlined),
-            selectedIcon: Icon(Icons.feed, color: Color(0xFFFF6B00)),
-            label: 'Issues',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.admin_panel_settings_outlined),
-            selectedIcon: Icon(Icons.admin_panel_settings, color: Color(0xFFFF6B00)),
-            label: 'NMC Admin',
+
+          // 2. Active Screen Body
+          Expanded(
+            child: IndexedStack(
+              index: _currentTab,
+              children: [
+                MapScreen(onOpenReport: _openReportScreen),
+                const IssueFeedScreen(),
+                const AdminScreen(),
+              ],
+            ),
           ),
         ],
       ),

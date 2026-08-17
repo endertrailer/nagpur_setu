@@ -32,29 +32,30 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFDFAF6),
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
+        backgroundColor: const Color(0xFFE65100),
+        foregroundColor: Colors.white,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1C1C)),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         centerTitle: true,
         title: Text(
-          'Issue #${complaint.id}',
+          'Grievance #${complaint.id}',
           style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFFFF6B00),
+            color: Colors.white,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.share_outlined, color: Colors.grey),
+            icon: const Icon(Icons.share_outlined, color: Colors.white),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Issue link copied to clipboard!')),
+                const SnackBar(content: Text('Grievance link copied to clipboard!')),
               );
             },
           ),
@@ -85,9 +86,13 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                     children: [
                       FloatingActionButton.small(
                         heroTag: 'share_hero',
-                        onPressed: () {},
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Grievance link copied!')),
+                          );
+                        },
                         backgroundColor: Colors.white,
-                        child: const Icon(Icons.share, color: Color(0xFFFF6B00), size: 18),
+                        child: const Icon(Icons.share, color: Color(0xFFE65100), size: 18),
                       ),
                       const SizedBox(width: 8),
                       FloatingActionButton.small(
@@ -100,7 +105,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                             _repo.upvoteComplaint(complaint.id, 'h_flutter_citizen');
                           }
                         },
-                        backgroundColor: _hasUpvoted ? Colors.green : const Color(0xFFFF6B00),
+                        backgroundColor: _hasUpvoted ? Colors.green[700] : const Color(0xFFE65100),
                         child: const Icon(Icons.thumb_up, color: Colors.white, size: 18),
                       ),
                     ],
@@ -143,7 +148,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                             color: isResolved
                                 ? Colors.green[300]!
                                 : complaint.status == ComplaintStatus.inProgress
-                                    ? const Color(0xFFFF6B00)
+                                    ? const Color(0xFFE65100)
                                     : Colors.red[300]!,
                           ),
                         ),
@@ -155,7 +160,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                             color: isResolved
                                 ? Colors.green[700]
                                 : complaint.status == ComplaintStatus.inProgress
-                                    ? const Color(0xFFFF6B00)
+                                    ? const Color(0xFFE65100)
                                     : Colors.red[700],
                           ),
                         ),
@@ -195,10 +200,10 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.local_fire_department, color: Color(0xFFFF6B00), size: 20),
+                        const Icon(Icons.local_fire_department, color: Color(0xFFE65100), size: 20),
                         const SizedBox(width: 6),
                         Text(
-                          '${complaint.reportCount} citizens reported this issue in Nagpur',
+                          '${complaint.reportCount} citizens corroborated this issue in Nagpur',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -224,7 +229,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.location_on, size: 18, color: Color(0xFFFF6B00)),
+                            const Icon(Icons.location_on, size: 18, color: Color(0xFFE65100)),
                             const SizedBox(width: 6),
                             Text(
                               'Verified Location (Nagpur)',
@@ -261,10 +266,10 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.history, size: 18, color: Color(0xFFFF6B00)),
+                            const Icon(Icons.history, size: 18, color: Color(0xFFE65100)),
                             const SizedBox(width: 6),
                             Text(
-                              'Status History',
+                              'Status History & Audit',
                               style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600]),
                             ),
                           ],
@@ -272,7 +277,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                         const SizedBox(height: 16),
                         _buildTimelineNode(
                           title: 'Reported by Citizen',
-                          subtitle: 'Submitted via phone OTP verification.',
+                          subtitle: 'Submitted with photo proof & OTP authentication.',
                           time: DateFormat('MMM d, hh:mm a').format(complaint.createdAt),
                           isActive: true,
                           isLast: false,
@@ -280,12 +285,12 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                         _buildTimelineNode(
                           title: 'Assigned to Municipal Wing',
                           subtitle: complaint.assignedTo ?? 'NMC Rapid Response Wing',
-                          time: 'Pending Squad',
+                          time: 'Squad Dispatched',
                           isActive: complaint.status == ComplaintStatus.inProgress || isResolved,
                           isLast: false,
                         ),
                         _buildTimelineNode(
-                          title: isResolved ? 'Resolved & Verified' : 'Resolution in Progress',
+                          title: isResolved ? 'Resolved & Audited' : 'Resolution in Progress',
                           subtitle: isResolved
                               ? (complaint.resolutionNotes ?? 'Field work completed.')
                               : 'Awaiting repair completion and After-Photo audit.',
@@ -314,7 +319,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.compare, size: 18, color: Color(0xFFFF6B00)),
+                            const Icon(Icons.compare, size: 18, color: Color(0xFFE65100)),
                             const SizedBox(width: 6),
                             Text(
                               'Before & After Public Audit',
@@ -367,17 +372,17 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFFFF0E5),
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: const Color(0xFFFF6B00)),
+                                        border: Border.all(color: const Color(0xFFE65100)),
                                       ),
                                       child: Center(
                                         child: Column(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            const Icon(Icons.build, color: Color(0xFFFF6B00), size: 28),
+                                            const Icon(Icons.build, color: Color(0xFFE65100), size: 28),
                                             const SizedBox(height: 4),
                                             Text(
                                               'Pending Repair',
-                                              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFFFF6B00)),
+                                              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFFE65100)),
                                             ),
                                           ],
                                         ),
@@ -422,7 +427,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
               child: OutlinedButton.icon(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Issue link shared!')),
+                    const SnackBar(content: Text('Grievance link shared!')),
                   );
                 },
                 icon: const Icon(Icons.share, size: 16, color: Color(0xFF1A1C1C)),
@@ -446,11 +451,11 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                 },
                 icon: const Icon(Icons.exposure_plus_1, size: 18),
                 label: Text(
-                  _hasUpvoted ? 'Corroborated!' : '+1 Me Too',
+                  _hasUpvoted ? 'Corroborated!' : '+1 Me Too (Affects Me)',
                   style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _hasUpvoted ? Colors.green[600] : const Color(0xFFFF6B00),
+                  backgroundColor: _hasUpvoted ? Colors.green[600] : const Color(0xFFE65100),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -480,7 +485,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
               width: 14,
               height: 14,
               decoration: BoxDecoration(
-                color: isActive ? const Color(0xFFFF6B00) : Colors.grey[300],
+                color: isActive ? const Color(0xFFE65100) : Colors.grey[300],
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
               ),
@@ -489,7 +494,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
               Container(
                 width: 2,
                 height: 44,
-                color: const Color(0xFFFF6B00),
+                color: const Color(0xFFE65100),
               ),
           ],
         ),
