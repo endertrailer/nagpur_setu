@@ -9,9 +9,11 @@ import 'widgets/official_header.dart';
 import 'widgets/official_drawer.dart';
 import 'services/location_service.dart';
 import 'services/network_service.dart';
+import 'services/supabase_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseConfig.initialize();
   runApp(const NagpurSetuApp());
 }
 
@@ -72,6 +74,10 @@ class _AppRootSecurityGateState extends State<AppRootSecurityGate> {
 
     final hasNet = await NetworkService.hasInternetConnection();
     final hasLoc = await LocationService.isLocationReady();
+
+    if (hasNet && !SupabaseConfig.isInitialized) {
+      await SupabaseConfig.initialize();
+    }
 
     if (mounted) {
       setState(() {

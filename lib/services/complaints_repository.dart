@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../models/complaint.dart';
 import '../data/seed_data.dart';
 import '../utils/geo_utils.dart';
 import 'network_service.dart';
+import 'supabase_service.dart';
 
 class ComplaintsRepository extends ChangeNotifier {
   static final ComplaintsRepository _instance = ComplaintsRepository._internal();
@@ -12,9 +14,11 @@ class ComplaintsRepository extends ChangeNotifier {
   List<Complaint> _complaints = [];
   String? _citizenPhone;
   String? _citizenPhoneHash;
+  bool _isRealtimeSubscribed = false;
 
   ComplaintsRepository._internal() {
     _complaints = List.from(kInitialSeedComplaints);
+    _initSupabaseSync();
   }
 
   List<Complaint> get complaints => List.unmodifiable(_complaints.where((c) => GeoUtils.isInsideNagpur(c.lat, c.lng)));
@@ -42,9 +46,125 @@ class ComplaintsRepository extends ChangeNotifier {
     return complaint.reporterPhoneHashes.contains(phoneHash);
   }
 
+  /// Initialize Supabase data fetching and live Realtime WebSocket stream
+  Future<void> _initSupabaseSync() async {
+    final client = SupabaseConfig.client;
+    if (client == null) return;
+
+    try {
+      // 1. Fetch existing complaints from Supabase
+      final response = await client
+          .from('complaints')
+          .select()
+          .order('created_at', ascending: false);
+
+      if (response.isNotEmpty) {
+        final List<Complaint> liveData = response.map<Complaint>((row) {
+          final statusStr = row['status'] as String? ?? 'open';
+          ComplaintStatus status = ComplaintStatus.open;
+          if (statusStr == 'in_progress') status = ComplaintStatus.inProgress;
+          if (statusStr == 'resolved') status = ComplaintStatus.resolved;
+
+          return Complaint(
+            id: row['complaint_ref'] ?? row['id'].toString().substring(0, 8),
+            title: row['title'] ?? 'Civic Issue',
+            category: row['category'] ?? 'Pothole',
+            description: row['description'] ?? '',
+            photoUrl: row['photo_url'] ?? '',
+            lat: (row['lat'] as num?)?.toDouble() ?? 21.1458,
+            lng: (row['lng'] as num?)?.toDouble() ?? 79.0882,
+            ward: row['ward'] ?? 'Nagpur City',
+            landmark: row['landmark'] ?? 'Nagpur',
+            status: status,
+            createdAt: DateTime.tryParse(row['created_at'] ?? '') ?? DateTime.now(),
+            reportCount: (row['report_count'] as num?)?.toInt() ?? 1,
+            evidencePhotos: List<String>.from(row['evidence_photos'] ?? []),
+            reporterPhoneHashes: List<String>.from(row['reporter_phone_hashes'] ?? []),
+            assignedTo: row['assigned_to'],
+            resolvedPhotoUrl: row['resolved_photo_url'],
+            resolutionNotes: row['resolution_notes'],
+            resolvedAt: DateTime.tryParse(row['resolved_at'] ?? ''),
+          );
+        }).toList();
+
+        if (liveData.isNotEmpty) {
+          _complaints = liveData;
+          notifyListeners();
+        }
+      }
+    } catch (_) {
+      // Retain local memory seed if Supabase table is not yet migrated
+    }
+
+    // 2. Subscribe to Realtime Postgres Changes
+    if (!_isRealtimeSubscribed) {
+      try {
+        client.from('complaints').stream(primaryKey: ['id']).listen((data) {
+          _onRealtimeUpdate(data);
+        });
+        _isRealtimeSubscribed = true;
+      } catch (_) {}
+    }
+  }
+
+  void _onRealtimeUpdate(List<Map<String, dynamic>> data) {
+    if (data.isEmpty) return;
+
+    final List<Complaint> updated = data.map<Complaint>((row) {
+      final statusStr = row['status'] as String? ?? 'open';
+      ComplaintStatus status = ComplaintStatus.open;
+      if (statusStr == 'in_progress') status = ComplaintStatus.inProgress;
+      if (statusStr == 'resolved') status = ComplaintStatus.resolved;
+
+      return Complaint(
+        id: row['complaint_ref'] ?? row['id'].toString().substring(0, 8),
+        title: row['title'] ?? 'Civic Issue',
+        category: row['category'] ?? 'Pothole',
+        description: row['description'] ?? '',
+        photoUrl: row['photo_url'] ?? '',
+        lat: (row['lat'] as num?)?.toDouble() ?? 21.1458,
+        lng: (row['lng'] as num?)?.toDouble() ?? 79.0882,
+        ward: row['ward'] ?? 'Nagpur City',
+        landmark: row['landmark'] ?? 'Nagpur',
+        status: status,
+        createdAt: DateTime.tryParse(row['created_at'] ?? '') ?? DateTime.now(),
+        reportCount: (row['report_count'] as num?)?.toInt() ?? 1,
+        evidencePhotos: List<String>.from(row['evidence_photos'] ?? []),
+        reporterPhoneHashes: List<String>.from(row['reporter_phone_hashes'] ?? []),
+        assignedTo: row['assigned_to'],
+        resolvedPhotoUrl: row['resolved_photo_url'],
+        resolutionNotes: row['resolution_notes'],
+        resolvedAt: DateTime.tryParse(row['resolved_at'] ?? ''),
+      );
+    }).toList();
+
+    _complaints = updated;
+    notifyListeners();
+  }
+
   void resetToDefaultSeed() {
     _complaints = List.from(kInitialSeedComplaints);
     notifyListeners();
+  }
+
+  /// Upload photo file to Supabase Storage Bucket
+  Future<String> uploadImageToSupabase(String filePath, String bucketName) async {
+    final client = SupabaseConfig.client;
+    if (client == null) return filePath;
+
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) return filePath;
+
+      final fileExt = filePath.split('.').last;
+      final fileName = 'proof_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(1000)}.$fileExt';
+
+      await client.storage.from(bucketName).upload(fileName, file);
+      final publicUrl = client.storage.from(bucketName).getPublicUrl(fileName);
+      return publicUrl;
+    } catch (_) {
+      return filePath;
+    }
   }
 
   /// Submit new report or merge with duplicate within 50 meters
@@ -89,7 +209,13 @@ class ComplaintsRepository extends ChangeNotifier {
       };
     }
 
-    // 4. Check for duplicate open/in-progress issue within 50m
+    // 4. Upload photo to Supabase storage if it's a local file path
+    String finalPhotoUrl = photoUrl;
+    if (!photoUrl.startsWith('http') && !kIsWeb) {
+      finalPhotoUrl = await uploadImageToSupabase(photoUrl, 'complaint-evidence');
+    }
+
+    // 5. Check for duplicate open/in-progress issue within 50m
     final dupResult = GeoUtils.findDuplicateComplaint(
       lat,
       lng,
@@ -103,8 +229,8 @@ class ComplaintsRepository extends ChangeNotifier {
     if (existing != null) {
       // Merge report
       final updatedPhotos = List<String>.from(existing.evidencePhotos);
-      if (!updatedPhotos.contains(photoUrl)) {
-        updatedPhotos.add(photoUrl);
+      if (!updatedPhotos.contains(finalPhotoUrl)) {
+        updatedPhotos.add(finalPhotoUrl);
       }
 
       final updatedHashes = List<String>.from(existing.reporterPhoneHashes);
@@ -123,6 +249,19 @@ class ComplaintsRepository extends ChangeNotifier {
         _complaints[index] = updated;
       }
 
+      // Sync merge to Supabase
+      final client = SupabaseConfig.client;
+      if (client != null) {
+        try {
+          await client.from('complaints').update({
+            'report_count': updated.reportCount,
+            'evidence_photos': updatedPhotos,
+            'reporter_phone_hashes': updatedHashes,
+            'updated_at': trustedTime.toIso8601String(),
+          }).eq('complaint_ref', existing.id);
+        } catch (_) {}
+      }
+
       notifyListeners();
 
       return {
@@ -134,14 +273,14 @@ class ComplaintsRepository extends ChangeNotifier {
       };
     }
 
-    // 5. Create fresh complaint (Using trusted network time)
+    // 6. Create fresh complaint
     final newId = 'NGP-${8500 + _complaints.length + Random().nextInt(50)}';
     final newComplaint = Complaint(
       id: newId,
       title: '$category reported near $landmark',
       category: category,
       description: description.isEmpty ? '$category reported by verified citizen.' : description,
-      photoUrl: photoUrl,
+      photoUrl: finalPhotoUrl,
       lat: lat,
       lng: lng,
       ward: 'Nagpur City',
@@ -149,11 +288,34 @@ class ComplaintsRepository extends ChangeNotifier {
       status: ComplaintStatus.open,
       createdAt: trustedTime,
       reportCount: 1,
-      evidencePhotos: [photoUrl],
+      evidencePhotos: [finalPhotoUrl],
       reporterPhoneHashes: [phoneHash],
     );
 
     _complaints.insert(0, newComplaint);
+
+    // Sync insert to Supabase
+    final client = SupabaseConfig.client;
+    if (client != null) {
+      try {
+        await client.from('complaints').insert({
+          'complaint_ref': newId,
+          'title': newComplaint.title,
+          'category': category,
+          'description': newComplaint.description,
+          'photo_url': finalPhotoUrl,
+          'evidence_photos': [finalPhotoUrl],
+          'lat': lat,
+          'lng': lng,
+          'landmark': landmark,
+          'status': 'open',
+          'report_count': 1,
+          'reporter_phone_hashes': [phoneHash],
+          'created_at': trustedTime.toIso8601String(),
+        });
+      } catch (_) {}
+    }
+
     notifyListeners();
 
     return {
@@ -183,6 +345,18 @@ class ComplaintsRepository extends ChangeNotifier {
     );
 
     _complaints[index] = updated;
+
+    // Sync upvote to Supabase
+    final client = SupabaseConfig.client;
+    if (client != null) {
+      try {
+        client.from('complaints').update({
+          'report_count': updated.reportCount,
+          'reporter_phone_hashes': updatedHashes,
+        }).eq('complaint_ref', id);
+      } catch (_) {}
+    }
+
     notifyListeners();
     return updated;
   }
