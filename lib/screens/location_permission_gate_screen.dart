@@ -4,7 +4,9 @@ import '../services/location_service.dart';
 import '../main.dart';
 
 class LocationPermissionGateScreen extends StatefulWidget {
-  const LocationPermissionGateScreen({super.key});
+  final VoidCallback? onPermissionGranted;
+
+  const LocationPermissionGateScreen({super.key, this.onPermissionGranted});
 
   @override
   State<LocationPermissionGateScreen> createState() => _LocationPermissionGateScreenState();
@@ -25,7 +27,9 @@ class _LocationPermissionGateScreenState extends State<LocationPermissionGateScr
     setState(() => _isChecking = false);
 
     if (result['granted']) {
-      if (mounted) {
+      if (widget.onPermissionGranted != null) {
+        widget.onPermissionGranted!();
+      } else if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
@@ -58,51 +62,55 @@ class _LocationPermissionGateScreenState extends State<LocationPermissionGateScr
                       color: const Color(0xFFFFF0E5),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Text('🍊', style: TextStyle(fontSize: 22)),
+                    child: const Icon(
+                      Icons.location_city_rounded,
+                      color: Color(0xFFE65100),
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    'Nagpur Setu',
+                    'नागपूर सेतू • NAGPUR SETU',
                     style: GoogleFonts.outfit(
-                      fontSize: 22,
+                      fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: const Color(0xFF1A1C1C),
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
               ),
 
-              // Center Visual & Mandatory Notice
+              // Center Visual Hero
               Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Animated Radar Pin Icon
                   Container(
-                    width: 110,
-                    height: 110,
+                    width: 140,
+                    height: 140,
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF0E5),
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFFF6B00), width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFFF6B00).withAlpha(40),
-                          blurRadius: 24,
-                          spreadRadius: 4,
+                          color: const Color(0xFFE65100).withAlpha(40),
+                          blurRadius: 30,
+                          offset: const Offset(0, 10),
                         ),
                       ],
                     ),
                     child: const Center(
                       child: Icon(
-                        Icons.location_on,
-                        size: 54,
-                        color: Color(0xFFFF6B00),
+                        Icons.share_location_rounded,
+                        size: 70,
+                        color: Color(0xFFE65100),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 32),
 
                   Text(
-                    'Location Access Mandatory',
+                    'Location Access Required',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
                       fontSize: 24,
@@ -113,55 +121,35 @@ class _LocationPermissionGateScreenState extends State<LocationPermissionGateScr
                   const SizedBox(height: 12),
 
                   Text(
-                    'Nagpur Setu is a verified municipal grievance platform for Nagpur city. Live GPS access is mandatory to:',
+                    'Nagpur Setu connects citizens directly with Nagpur Municipal Corporation (NMC). To file grievances, view live repair squads, and cluster civic hazards, hardware GPS location access is required.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 13,
-                      color: Colors.grey[600],
                       height: 1.5,
+                      color: Colors.grey[700],
                     ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Feature bullets
-                  _buildRequirementItem(
-                    icon: Icons.pin_drop_outlined,
-                    title: 'Accurate Municipal Geo-tagging',
-                    desc: 'Pins potholes and broken infrastructure to exact street coordinates.',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildRequirementItem(
-                    icon: Icons.shield_outlined,
-                    title: 'Anti-Spam & Geofence Verification',
-                    desc: 'Strictly verifies that reports originate within Nagpur city limits.',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildRequirementItem(
-                    icon: Icons.merge_type,
-                    title: '50-Meter Proximity Deduplication',
-                    desc: 'Merges duplicate reports to boost urgency without flooding tickets.',
                   ),
 
                   if (_errorMessage != null) ...[
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.red[50],
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red[200]!),
+                        border: Border.all(color: Colors.red[300]!),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                          const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                              style: TextStyle(
                                 color: Colors.red[900],
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
@@ -172,90 +160,62 @@ class _LocationPermissionGateScreenState extends State<LocationPermissionGateScr
                 ],
               ),
 
-              // Bottom CTA
+              // Bottom Action Section
               Column(
                 children: [
                   SizedBox(
                     width: double.infinity,
+                    height: 52,
                     child: ElevatedButton.icon(
                       onPressed: _isChecking ? null : _handleGrantPermission,
                       icon: _isChecking
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
-                          : const Icon(Icons.near_me, size: 20),
+                          : const Icon(Icons.my_location_rounded, size: 20),
                       label: Text(
-                        _isChecking ? 'Verifying GPS...' : 'Enable GPS & Continue',
-                        style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800),
+                        _isChecking ? 'Checking GPS Location...' : 'Enable Location to Continue',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF6B00),
+                        backgroundColor: const Color(0xFFE65100),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 4,
-                        shadowColor: const Color(0xFFFF6B00).withAlpha(100),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '🔒 Your location is only queried when using map & reporting tools.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[500]),
+                  const SizedBox(height: 14),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.verified_user_outlined, size: 14, color: Colors.grey),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Your location is only used within Nagpur municipal bounds',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildRequirementItem({
-    required IconData icon,
-    required String title,
-    required String desc,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF0E5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: const Color(0xFFFF6B00), size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF1A1C1C)),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  desc,
-                  style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

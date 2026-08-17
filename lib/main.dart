@@ -5,11 +5,13 @@ import 'screens/issue_feed_screen.dart';
 import 'screens/report_screen.dart';
 import 'screens/location_permission_gate_screen.dart';
 import 'screens/network_gate_screen.dart';
+import 'screens/citizen_login_gate_screen.dart';
 import 'widgets/official_header.dart';
 import 'widgets/official_drawer.dart';
 import 'services/location_service.dart';
 import 'services/network_service.dart';
 import 'services/supabase_service.dart';
+import 'services/complaints_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,7 +51,10 @@ class NagpurSetuApp extends StatelessWidget {
   }
 }
 
-/// Dual Mandatory Gate: 1. Internet Connection Check -> 2. GPS Location Permission Check
+/// Mandatory 3-Tier Security & Onboarding Gate:
+/// 1. Internet Connection Gate
+/// 2. GPS Location Permission Gate
+/// 3. One-Time Citizen Login Gate
 class AppRootSecurityGate extends StatefulWidget {
   const AppRootSecurityGate({super.key});
 
@@ -58,6 +63,7 @@ class AppRootSecurityGate extends StatefulWidget {
 }
 
 class _AppRootSecurityGateState extends State<AppRootSecurityGate> {
+  final ComplaintsRepository _repo = ComplaintsRepository();
   bool _isLoading = true;
   bool _hasInternet = false;
   bool _hasLocationPermission = false;
@@ -66,7 +72,18 @@ class _AppRootSecurityGateState extends State<AppRootSecurityGate> {
   @override
   void initState() {
     super.initState();
+    _repo.addListener(_onRepoStateChanged);
     _evaluateAppRequirements();
+  }
+
+  @override
+  void dispose() {
+    _repo.removeListener(_onRepoStateChanged);
+    super.dispose();
+  }
+
+  void _onRepoStateChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _evaluateAppRequirements() async {
@@ -100,7 +117,7 @@ class _AppRootSecurityGateState extends State<AppRootSecurityGate> {
       );
     }
 
-    // 1. Mandatory Internet Gate
+    // Tier 1: Mandatory Internet Gate
     if (!_hasInternet) {
       return NetworkGateScreen(
         onRetry: _evaluateAppRequirements,
@@ -108,12 +125,25 @@ class _AppRootSecurityGateState extends State<AppRootSecurityGate> {
       );
     }
 
-    // 2. Mandatory Location Gate
+    // Tier 2: Mandatory Location Permission Gate
     if (!_hasLocationPermission) {
-      return const LocationPermissionGateScreen();
+      return LocationPermissionGateScreen(
+        onPermissionGranted: () {
+          setState(() => _hasLocationPermission = true);
+        },
+      );
     }
 
-    // 3. Main App Experience
+    // Tier 3: Mandatory Citizen Mobile Login Gate
+    if (!_repo.isCitizenLoggedIn) {
+      return CitizenLoginGateScreen(
+        onLoginSuccess: () {
+          setState(() {});
+        },
+      );
+    }
+
+    // Tier 4: Main Civic App Experience (All gates cleared)
     return const MainNavigationScreen();
   }
 }
