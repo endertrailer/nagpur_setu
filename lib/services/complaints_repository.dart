@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/complaint.dart';
 import '../data/seed_data.dart';
 import '../utils/geo_utils.dart';
+import 'network_service.dart';
 
 class ComplaintsRepository extends ChangeNotifier {
   static final ComplaintsRepository _instance = ComplaintsRepository._internal();
@@ -47,7 +48,7 @@ class ComplaintsRepository extends ChangeNotifier {
   }
 
   /// Submit new report or merge with duplicate within 50 meters
-  Map<String, dynamic> submitOrMergeReport({
+  Future<Map<String, dynamic>> submitOrMergeReport({
     required String category,
     required String description,
     required String photoUrl,
@@ -55,17 +56,20 @@ class ComplaintsRepository extends ChangeNotifier {
     required double lng,
     required String landmark,
     required String phoneHash,
-  }) {
+  }) async {
     // 1. Strict Nagpur Boundary Check
     if (!GeoUtils.isInsideNagpur(lat, lng)) {
       return {
         'success': false,
-        'message': 'Rejected: Location is outside Nagpur Municipal Corporation boundaries. Nagpur Setu is strictly for grievances within Nagpur city limits.',
+        'message': 'Rejected: Location (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}) is outside Nagpur Municipal Corporation boundaries. Pins outside Nagpur cannot be added.',
         'isDuplicate': false,
       };
     }
 
-    // 2. Strict 7-day rate-limiting per phone hash within 50 meters
+    // 2. Authoritative Tamper-Proof Network Time
+    final trustedTime = await NetworkService.getTrustedNetworkTime();
+
+    // 3. Strict 7-day rate-limiting per phone hash within 50 meters
     final rateLimit = GeoUtils.checkRateLimit(
       phoneHash,
       lat,
@@ -73,6 +77,7 @@ class ComplaintsRepository extends ChangeNotifier {
       _complaints,
       daysWindow: 7,
       radiusMeters: 50.0,
+      trustedNow: trustedTime,
     );
 
     if (!rateLimit['allowed']) {
@@ -84,7 +89,7 @@ class ComplaintsRepository extends ChangeNotifier {
       };
     }
 
-    // 3. Check for duplicate open/in-progress issue within 50m
+    // 4. Check for duplicate open/in-progress issue within 50m
     final dupResult = GeoUtils.findDuplicateComplaint(
       lat,
       lng,
@@ -129,20 +134,20 @@ class ComplaintsRepository extends ChangeNotifier {
       };
     }
 
-    // 4. Create fresh complaint
+    // 5. Create fresh complaint (Using trusted network time)
     final newId = 'NGP-${8500 + _complaints.length + Random().nextInt(50)}';
     final newComplaint = Complaint(
       id: newId,
-      title: '$category reported at $landmark',
+      title: '$category reported near $landmark',
       category: category,
-      description: description,
+      description: description.isEmpty ? '$category reported by verified citizen.' : description,
       photoUrl: photoUrl,
       lat: lat,
       lng: lng,
       ward: 'Nagpur City',
       landmark: landmark,
       status: ComplaintStatus.open,
-      createdAt: DateTime.now(),
+      createdAt: trustedTime,
       reportCount: 1,
       evidencePhotos: [photoUrl],
       reporterPhoneHashes: [phoneHash],
@@ -154,7 +159,7 @@ class ComplaintsRepository extends ChangeNotifier {
     return {
       'success': true,
       'isDuplicate': false,
-      'message': 'New civic complaint #$newId submitted successfully to Nagpur Setu map!',
+      'message': 'New civic grievance #$newId submitted! It has been pinned on the Nagpur map and added to the public grievances feed.',
       'complaint': newComplaint,
     };
   }

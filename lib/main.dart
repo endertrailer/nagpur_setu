@@ -4,9 +4,11 @@ import 'screens/map_screen.dart';
 import 'screens/issue_feed_screen.dart';
 import 'screens/report_screen.dart';
 import 'screens/location_permission_gate_screen.dart';
+import 'screens/network_gate_screen.dart';
 import 'widgets/official_header.dart';
 import 'widgets/official_drawer.dart';
 import 'services/location_service.dart';
+import 'services/network_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,35 +42,45 @@ class NagpurSetuApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const AppRootPermissionGate(),
+      home: const AppRootSecurityGate(),
     );
   }
 }
 
-/// Gate widget that mandates location permission before entering the app
-class AppRootPermissionGate extends StatefulWidget {
-  const AppRootPermissionGate({super.key});
+/// Dual Mandatory Gate: 1. Internet Connection Check -> 2. GPS Location Permission Check
+class AppRootSecurityGate extends StatefulWidget {
+  const AppRootSecurityGate({super.key});
 
   @override
-  State<AppRootPermissionGate> createState() => _AppRootPermissionGateState();
+  State<AppRootSecurityGate> createState() => _AppRootSecurityGateState();
 }
 
-class _AppRootPermissionGateState extends State<AppRootPermissionGate> {
+class _AppRootSecurityGateState extends State<AppRootSecurityGate> {
   bool _isLoading = true;
+  bool _hasInternet = false;
   bool _hasLocationPermission = false;
+  bool _isChecking = false;
 
   @override
   void initState() {
     super.initState();
-    _checkPermissionState();
+    _evaluateAppRequirements();
   }
 
-  Future<void> _checkPermissionState() async {
-    final ready = await LocationService.isLocationReady();
-    setState(() {
-      _hasLocationPermission = ready;
-      _isLoading = false;
-    });
+  Future<void> _evaluateAppRequirements() async {
+    setState(() => _isChecking = true);
+
+    final hasNet = await NetworkService.hasInternetConnection();
+    final hasLoc = await LocationService.isLocationReady();
+
+    if (mounted) {
+      setState(() {
+        _hasInternet = hasNet;
+        _hasLocationPermission = hasLoc;
+        _isLoading = false;
+        _isChecking = false;
+      });
+    }
   }
 
   @override
@@ -82,11 +94,21 @@ class _AppRootPermissionGateState extends State<AppRootPermissionGate> {
       );
     }
 
-    if (_hasLocationPermission) {
-      return const MainNavigationScreen();
+    // 1. Mandatory Internet Gate
+    if (!_hasInternet) {
+      return NetworkGateScreen(
+        onRetry: _evaluateAppRequirements,
+        isChecking: _isChecking,
+      );
     }
 
-    return const LocationPermissionGateScreen();
+    // 2. Mandatory Location Gate
+    if (!_hasLocationPermission) {
+      return const LocationPermissionGateScreen();
+    }
+
+    // 3. Main App Experience
+    return const MainNavigationScreen();
   }
 }
 
@@ -107,7 +129,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       MaterialPageRoute(
         builder: (_) => ReportScreen(
           onReportSuccess: () {
-            setState(() => _currentTab = 0); // Switch to map
+            setState(() => _currentTab = 1); // Switch to grievances so user immediately sees their report!
           },
         ),
       ),

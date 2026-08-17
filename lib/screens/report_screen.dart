@@ -1,6 +1,9 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:confetti/confetti.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/complaints_repository.dart';
 import '../services/vision_classifier.dart';
 import '../services/location_service.dart';
@@ -46,25 +49,28 @@ class ReportScreen extends StatefulWidget {
 
 class _ReportScreenState extends State<ReportScreen> {
   final ComplaintsRepository _repo = ComplaintsRepository();
+  final ImagePicker _picker = ImagePicker();
   late ConfettiController _confettiController;
 
   int _currentStep = 1;
 
-  // Form State
+  // Photo state (Supports Gallery, Camera, or Sample photo)
+  XFile? _pickedFile;
   String _photoUrl = kSampleCivicPhotos[0]['url']!;
   String _category = 'Pothole';
   bool _isClassifying = false;
   ClassificationResult? _aiResult;
 
-  final TextEditingController _landmarkController = TextEditingController(text: 'Coffee House Square, West High Court Road, Dharampeth');
-  final TextEditingController _descriptionController = TextEditingController();
+  // 100% Automatic GPS State (No manual user address typing)
   double _lat = 21.1432;
   double _lng = 79.0620;
+  String _autoDetectedLandmark = 'Near Coffee House Square, West High Court Road, Dharampeth';
   bool _isDetectingLocation = false;
+  bool _hasAttemptedGps = false;
 
-  final TextEditingController _locationSearchController = TextEditingController();
-  List<NagpurLocation> _searchSuggestions = [];
+  final TextEditingController _descriptionController = TextEditingController();
 
+  // Phone OTP
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   bool _otpSent = false;
@@ -73,6 +79,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Map<String, dynamic>? _duplicateAlert;
   String? _rateLimitError;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -94,9 +101,7 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   void dispose() {
     _confettiController.dispose();
-    _landmarkController.dispose();
     _descriptionController.dispose();
-    _locationSearchController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
@@ -105,8 +110,8 @@ class _ReportScreenState extends State<ReportScreen> {
   void _runAiClassification() async {
     setState(() => _isClassifying = true);
     final result = await VisionClassifierService.classifyCivicImage(
-      fileName: 'pothole_crater.jpg',
-      hintText: _landmarkController.text,
+      fileName: _pickedFile?.name ?? 'civic_photo.jpg',
+      hintText: _autoDetectedLandmark,
     );
     setState(() {
       _isClassifying = false;
@@ -131,8 +136,130 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? file = await _picker.pickImage(
+        source: source,
+        maxWidth: 1600,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
+
+      if (file != null) {
+        setState(() {
+          _pickedFile = file;
+          _photoUrl = file.path;
+        });
+        _runAiClassification();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not access image: $e')),
+        );
+      }
+    }
+  }
+
+  void _showPhotoOptionsDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Upload Civic Photo Proof',
+              style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 14),
+
+            // Gallery Option
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: const Color(0xFFFFF0E5), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.photo_library, color: Color(0xFFE65100)),
+              ),
+              title: Text('Choose from Gallery', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
+              subtitle: Text('Select evidence photo from your device storage', style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[600])),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+
+            // Camera Option
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.camera_alt, color: Colors.blue[800]),
+              ),
+              title: Text('Take Live Photo with Camera', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
+              subtitle: Text('Capture the pothole, garbage, or leak on-site', style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[600])),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+
+            const Divider(),
+            Text('Or Select Sample Civic Proof:', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[700])),
+            const SizedBox(height: 8),
+
+            SizedBox(
+              height: 70,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: kSampleCivicPhotos.length,
+                itemBuilder: (context, idx) {
+                  final item = kSampleCivicPhotos[idx];
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _pickedFile = null;
+                        _photoUrl = item['url']!;
+                        _category = item['category']!;
+                      });
+                      Navigator.pop(ctx);
+                      _runAiClassification();
+                    },
+                    child: Container(
+                      width: 70,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(9),
+                        child: Image.network(item['url']!, fit: BoxFit.cover),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 100% Automatic GPS Location Capture
   Future<void> _detectLocation() async {
-    setState(() => _isDetectingLocation = true);
+    setState(() {
+      _isDetectingLocation = true;
+      _hasAttemptedGps = true;
+    });
 
     final pos = await LocationService.getCurrentDeviceLocation(context);
 
@@ -143,12 +270,20 @@ class _ReportScreenState extends State<ReportScreen> {
     final lat = pos.latitude;
     final lng = pos.longitude;
 
-    if (!GeoUtils.isInsideNagpur(lat, lng)) {
+    final isNagpur = GeoUtils.isInsideNagpur(lat, lng);
+
+    if (!isNagpur) {
+      setState(() {
+        _lat = lat;
+        _lng = lng;
+        _autoDetectedLandmark = 'Outside Nagpur Limits';
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Detected GPS (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}) is outside Nagpur limits. Please pick a location within Nagpur.',
+              'Location (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}) is OUTSIDE Nagpur city. Pin cannot be placed outside Nagpur.',
             ),
             backgroundColor: Colors.red[800],
             duration: const Duration(seconds: 4),
@@ -158,142 +293,24 @@ class _ReportScreenState extends State<ReportScreen> {
       return;
     }
 
+    final closest = GeoUtils.findClosestNagpurLandmark(lat, lng);
+
     setState(() {
       _lat = lat;
       _lng = lng;
-      _landmarkController.text = 'Verified GPS Location, Nagpur (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})';
+      _autoDetectedLandmark = '${closest.name} (${closest.area})';
     });
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('📍 Live GPS: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} (Nagpur)'),
+          content: Text('📍 Live GPS Locked: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} ($closest)'),
           backgroundColor: Colors.green[700],
         ),
       );
     }
 
     _checkDuplicates();
-  }
-
-  void _searchNagpurLocation(String query) {
-    if (query.trim().isEmpty) {
-      setState(() => _searchSuggestions = []);
-    } else {
-      setState(() {
-        _searchSuggestions = GeoUtils.searchLocations(query);
-      });
-    }
-  }
-
-  void _selectLocation(NagpurLocation loc) {
-    setState(() {
-      _lat = loc.lat;
-      _lng = loc.lng;
-      _landmarkController.text = '${loc.name} (${loc.area})';
-      _locationSearchController.text = loc.name;
-      _searchSuggestions = [];
-    });
-    _checkDuplicates();
-  }
-
-  void _showPhotoProofPicker() {
-    final customUrlController = TextEditingController();
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Select or Upload Photo Proof',
-              style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 14),
-
-            // Sample Civic Photos Grid
-            SizedBox(
-              height: 100,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: kSampleCivicPhotos.length,
-                itemBuilder: (context, idx) {
-                  final item = kSampleCivicPhotos[idx];
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _photoUrl = item['url']!;
-                        _category = item['category']!;
-                      });
-                      Navigator.pop(ctx);
-                      _checkDuplicates();
-                    },
-                    child: Container(
-                      width: 100,
-                      margin: const EdgeInsets.only(right: 10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: _photoUrl == item['url'] ? const Color(0xFFE65100) : Colors.grey[300]!,
-                          width: _photoUrl == item['url'] ? 2.5 : 1,
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.network(item['url']!, fit: BoxFit.cover),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            Text('Or Enter Custom Photo URL / Cloud Image:', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: customUrlController,
-                    style: GoogleFonts.inter(fontSize: 12),
-                    decoration: InputDecoration(
-                      hintText: 'https://images.unsplash.com/...',
-                      filled: true,
-                      fillColor: const Color(0xFFF8F9FA),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    if (customUrlController.text.trim().isNotEmpty) {
-                      setState(() => _photoUrl = customUrlController.text.trim());
-                      Navigator.pop(ctx);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE65100),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text('Use Photo'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _sendOtp() {
@@ -326,35 +343,42 @@ class _ReportScreenState extends State<ReportScreen> {
     });
   }
 
-  void _submitReport() {
-    setState(() => _rateLimitError = null);
+  void _submitReport() async {
+    setState(() {
+      _rateLimitError = null;
+      _isSubmitting = true;
+    });
 
     if (!GeoUtils.isInsideNagpur(_lat, _lng)) {
+      setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Rejected: Location is outside Nagpur city limits.')),
+        const SnackBar(content: Text('Rejected: GPS is outside Nagpur city limits. Cannot add pin.')),
       );
       return;
     }
 
     if (!_isPhoneVerified) {
+      setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please verify your phone via OTP first.')),
+        const SnackBar(content: Text('Please verify your mobile number via OTP first.')),
       );
       return;
     }
 
-    // Rate-limit check & submission
-    final result = _repo.submitOrMergeReport(
+    // Tamper-proof async rate-limit & submission
+    final result = await _repo.submitOrMergeReport(
       category: _category,
       description: _descriptionController.text.trim().isEmpty
-          ? '$_category issue reported near ${_landmarkController.text}'
+          ? '$_category issue verified by citizen at $_autoDetectedLandmark'
           : _descriptionController.text.trim(),
       photoUrl: _photoUrl,
       lat: _lat,
       lng: _lng,
-      landmark: _landmarkController.text.trim(),
+      landmark: _autoDetectedLandmark,
       phoneHash: _phoneHash,
     );
+
+    setState(() => _isSubmitting = false);
 
     if (!result['success']) {
       setState(() => _rateLimitError = result['message']);
@@ -363,39 +387,64 @@ class _ReportScreenState extends State<ReportScreen> {
 
     _confettiController.play();
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 28),
-            const SizedBox(width: 8),
-            Text('Grievance Registered!', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.green, size: 28),
+              const SizedBox(width: 8),
+              Text('Grievance Registered!', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text(
+            result['message'],
+            style: GoogleFonts.inter(fontSize: 14),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context);
+                if (widget.onReportSuccess != null) {
+                  widget.onReportSuccess!();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE65100),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('View in Grievances'),
+            ),
           ],
         ),
-        content: Text(
-          result['message'],
-          style: GoogleFonts.inter(fontSize: 14),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.pop(context);
-              if (widget.onReportSuccess != null) {
-                widget.onReportSuccess!();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE65100),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('View on Map'),
-          ),
-        ],
+      );
+    }
+  }
+
+  Widget _buildPhotoPreview() {
+    if (_pickedFile != null && !kIsWeb) {
+      return Image.file(
+        File(_pickedFile!.path),
+        height: 200,
+        width: double.infinity,
+        fit: BoxFit.cover,
+      );
+    }
+
+    return Image.network(
+      _photoUrl,
+      height: 200,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        height: 200,
+        color: Colors.grey[200],
+        child: const Center(child: Icon(Icons.broken_image, size: 40)),
       ),
     );
   }
@@ -453,7 +502,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // STEP 1: Photo & Category
+                // STEP 1: Photo Upload (Gallery / Camera) & Category Selection
                 if (_currentStep == 1) ...[
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -462,41 +511,42 @@ class _ReportScreenState extends State<ReportScreen> {
                         '1. Upload Photo Proof',
                         style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF1A1C1C)),
                       ),
-                      TextButton.icon(
-                        onPressed: _showPhotoProofPicker,
-                        icon: const Icon(Icons.photo_library, size: 16, color: Color(0xFFE65100)),
-                        label: const Text('Change Photo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFE65100))),
+                      ElevatedButton.icon(
+                        onPressed: _showPhotoOptionsDialog,
+                        icon: const Icon(Icons.add_photo_alternate, size: 16),
+                        label: const Text('Upload Photo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE65100),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
 
                   GestureDetector(
-                    onTap: _showPhotoProofPicker,
+                    onTap: _showPhotoOptionsDialog,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(18),
                       child: Stack(
                         children: [
-                          Image.network(
-                            _photoUrl,
-                            height: 190,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
+                          _buildPhotoPreview(),
                           Positioned(
                             bottom: 10,
                             right: 10,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
                                 color: Colors.black87,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Row(
                                 children: [
-                                  Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                                  Icon(Icons.photo_camera, color: Colors.white, size: 14),
                                   SizedBox(width: 4),
-                                  Text('Tap to Change', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                  Text('Gallery / Camera', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                             ),
@@ -533,7 +583,7 @@ class _ReportScreenState extends State<ReportScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'AI Category Match: ${_aiResult!.suggestedCategory} (${(_aiResult!.confidence * 100).round()}% confidence)',
+                                  'AI Detected Category: ${_aiResult!.suggestedCategory} (${(_aiResult!.confidence * 100).round()}% confidence)',
                                   style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFE65100)),
                                 ),
                                 Text(
@@ -554,7 +604,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // Government Category Selection Tiles
+                  // Pastel Category Grid Tiles
                   CivicCategoryTilesGrid(
                     selectedCategoryId: _category,
                     onSelectCategory: (catId) {
@@ -566,137 +616,125 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                 ],
 
-                // STEP 2: Location (Detect GPS & 60+ Nagpur Locations Search)
+                // STEP 2: 100% Automatic GPS Location (No manual address input)
                 if (_currentStep == 2) ...[
-                  // Detect GPS Button
+                  Text(
+                    'Automatic GPS Geo-tagging',
+                    style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFF1A1C1C)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Nagpur Setu strictly uses live device GPS hardware to prevent fraudulent pins outside Nagpur city limits.',
+                    style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // GPS Status Card
                   Container(
-                    padding: const EdgeInsets.all(14),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0E5),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE65100)),
+                      color: isNagpurValid ? Colors.white : Colors.red[50],
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isNagpurValid ? const Color(0xFFE65100) : Colors.red[300]!,
+                        width: isNagpurValid ? 1.5 : 2,
+                      ),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 8),
+                      ],
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.my_location, color: Color(0xFFE65100), size: 24),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Detect Citizen GPS (Nagpur)', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
-                              Text('GPS: ${_lat.toStringAsFixed(4)}, ${_lng.toStringAsFixed(4)}', style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[600])),
-                            ],
-                          ),
+                        Row(
+                          children: [
+                            Icon(
+                              isNagpurValid ? Icons.my_location : Icons.location_off,
+                              color: isNagpurValid ? const Color(0xFFE65100) : Colors.red[800],
+                              size: 26,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                isNagpurValid ? 'Live Hardware GPS Locked' : 'Outside Nagpur City Limit',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: isNagpurValid ? const Color(0xFF1A1C1C) : Colors.red[900],
+                                ),
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: _isDetectingLocation ? null : _detectLocation,
+                              icon: _isDetectingLocation
+                                  ? const SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Icon(Icons.refresh, size: 14),
+                              label: const Text('Capture GPS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFE65100),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ],
                         ),
-                        ElevatedButton(
-                          onPressed: _isDetectingLocation ? null : _detectLocation,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFFE65100),
-                            elevation: 0,
-                            side: const BorderSide(color: Color(0xFFE65100)),
-                          ),
-                          child: _isDetectingLocation
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE65100)),
-                                )
-                              : const Text('Detect GPS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        const Divider(height: 24),
+
+                        Text('GPS Coordinates:', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${_lat.toStringAsFixed(5)}, ${_lng.toStringAsFixed(5)}',
+                          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFFE65100)),
+                        ),
+                        const SizedBox(height: 12),
+
+                        Text('Nearest Nagpur Locality:', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                        const SizedBox(height: 2),
+                        Text(
+                          _autoDetectedLandmark,
+                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF1A1C1C)),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // Search Location Autocomplete (60+ Nagpur Locations)
-                  Text(
-                    'Search Precise Nagpur Landmark & Area',
-                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _locationSearchController,
-                    onChanged: _searchNagpurLocation,
-                    decoration: InputDecoration(
-                      hintText: 'Type Dharampeth, Sitabuldi, Sadar, Wardha Rd...',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.grey[300]!)),
-                    ),
-                  ),
-                  if (_searchSuggestions.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(top: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[300]!),
-                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-                      ),
-                      child: Column(
-                        children: _searchSuggestions.map((loc) {
-                          return ListTile(
-                            dense: true,
-                            leading: const Icon(Icons.location_on, color: Color(0xFFE65100), size: 18),
-                            title: Text(loc.name, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
-                            subtitle: Text(loc.area, style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[600])),
-                            onTap: () => _selectLocation(loc),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-
-                  Text(
-                    'Exact Street Address / Landmark',
-                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _landmarkController,
-                    decoration: InputDecoration(
-                      hintText: 'e.g. Near Coffee House Square, WHC Road',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.grey[300]!)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Text(
-                    'Grievance Description',
-                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _descriptionController,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      hintText: 'Describe severity, road hazard or water leakage...',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.grey[300]!)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
+                  // Strict Blocker Notice if Outside Nagpur
                   if (!isNagpurValid)
                     Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(12)),
-                      child: Text('❌ Location is outside Nagpur municipal limits. Please pick a location inside Nagpur.', style: TextStyle(color: Colors.red[800], fontSize: 12)),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.red[100],
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.red[400]!),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.block, color: Colors.red, size: 24),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              '🚫 GPS position is outside Nagpur Municipal bounds (Lat: 21.04-21.26, Lng: 78.98-79.22). You CANNOT place a pin or submit a report here.',
+                              style: TextStyle(color: Colors.red[900], fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
 
                   if (_duplicateAlert != null && isNagpurValid)
                     Container(
                       margin: const EdgeInsets.only(top: 8),
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: Colors.amber[50],
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: Colors.amber[300]!),
                       ),
                       child: Text(
@@ -704,6 +742,23 @@ class _ReportScreenState extends State<ReportScreen> {
                         style: TextStyle(color: Colors.amber[900], fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ),
+                  const SizedBox(height: 16),
+
+                  Text(
+                    'Optional Citizen Note',
+                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _descriptionController,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      hintText: 'Additional details (e.g., deep trench, heavy traffic hazard)...',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.grey[300]!)),
+                    ),
+                  ),
                 ],
 
                 // STEP 3: Phone OTP Verification
@@ -722,7 +777,7 @@ class _ReportScreenState extends State<ReportScreen> {
                           children: [
                             const Icon(Icons.security, color: Colors.green, size: 22),
                             const SizedBox(width: 8),
-                            Text('Citizen Authentication', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
+                            Text('Citizen Mobile Authentication', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
                           ],
                         ),
                         const SizedBox(height: 6),
@@ -821,7 +876,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       child: Text('✓ Verified Citizen (SHA-256 Encrypted)', style: TextStyle(color: Colors.green[900], fontWeight: FontWeight.bold)),
                     ),
 
-                  // 7-Day 50m Rate Limit Error Banner
+                  // 7-Day 50m Tamper-Proof Rate Limit Error Banner
                   if (_rateLimitError != null)
                     Container(
                       margin: const EdgeInsets.only(top: 14),
@@ -833,7 +888,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: Colors.red, size: 22),
+                          const Icon(Icons.timer_off_outlined, color: Colors.red, size: 22),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -848,7 +903,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
                 const SizedBox(height: 30),
 
-                // Step Navigation Buttons
+                // Step Navigation Buttons (Strictly Disables Continue if Location is outside Nagpur)
                 Row(
                   children: [
                     if (_currentStep > 1)
@@ -864,29 +919,36 @@ class _ReportScreenState extends State<ReportScreen> {
                     const Spacer(),
                     if (_currentStep < 3)
                       ElevatedButton.icon(
-                        onPressed: () {
-                          if (_currentStep == 2 && !isNagpurValid) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please choose a location inside Nagpur.')),
-                            );
-                            return;
-                          }
-                          setState(() => _currentStep++);
-                        },
+                        onPressed: (_currentStep == 2 && !isNagpurValid)
+                            ? null
+                            : () {
+                                if (_currentStep == 1 && !_hasAttemptedGps) {
+                                  _detectLocation();
+                                }
+                                setState(() => _currentStep++);
+                              },
                         icon: const Icon(Icons.arrow_forward, size: 16),
-                        label: const Text('Continue'),
+                        label: Text(
+                          (_currentStep == 2 && !isNagpurValid)
+                              ? 'GPS Outside Nagpur (Blocked)'
+                              : 'Continue',
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFE65100),
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey[400],
+                          disabledForegroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       )
                     else
                       ElevatedButton.icon(
-                        onPressed: _submitReport,
-                        icon: const Icon(Icons.send, size: 16),
-                        label: const Text('Register Grievance'),
+                        onPressed: _isSubmitting ? null : _submitReport,
+                        icon: _isSubmitting
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Icon(Icons.send, size: 16),
+                        label: Text(_isSubmitting ? 'Registering...' : 'Register Grievance'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFE65100),
                           foregroundColor: Colors.white,

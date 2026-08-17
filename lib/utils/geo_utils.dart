@@ -174,6 +174,21 @@ class GeoUtils {
     }).toList();
   }
 
+  /// Find closest recognized Nagpur landmark from GPS coordinates
+  static NagpurLocation findClosestNagpurLandmark(double lat, double lng) {
+    NagpurLocation closest = kNagpurLocations.first;
+    double minDistance = double.infinity;
+
+    for (final loc in kNagpurLocations) {
+      final dist = haversineDistance(lat, lng, loc.lat, loc.lng);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closest = loc;
+      }
+    }
+    return closest;
+  }
+
   /// Haversine Great-Circle distance formula returning distance in meters
   static double haversineDistance(
     double lat1,
@@ -232,7 +247,7 @@ class GeoUtils {
     };
   }
 
-  /// Check 7-day rate-limiting for the same phone hash within 50 meters
+  /// Check 7-day rate-limiting with tamper-proof trusted time
   static Map<String, dynamic> checkRateLimit(
     String phoneHash,
     double newLat,
@@ -240,15 +255,16 @@ class GeoUtils {
     List<Complaint> complaints, {
     int daysWindow = 7,
     double radiusMeters = 50.0,
+    DateTime? trustedNow,
   }) {
-    final now = DateTime.now();
+    final now = trustedNow ?? DateTime.now().toUtc();
     final cutoff = now.subtract(Duration(days: daysWindow));
 
     for (final c in complaints) {
       if (c.reporterPhoneHashes.contains(phoneHash)) {
         final dist = haversineDistance(newLat, newLng, c.lat, c.lng);
-        if (dist <= radiusMeters && c.createdAt.isAfter(cutoff)) {
-          final diffDays = now.difference(c.createdAt).inDays;
+        if (dist <= radiusMeters && c.createdAt.toUtc().isAfter(cutoff)) {
+          final diffDays = now.difference(c.createdAt.toUtc()).inDays;
           final remainingDays = max(1, daysWindow - diffDays);
           return {
             'allowed': false,
