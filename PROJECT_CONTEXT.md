@@ -119,8 +119,8 @@ On startup, the app enforces three non-bypassable gates in order:
 
 ## 🔑 5. Test Credentials & Demo Data
 
-* **Test Citizen Phone:** `+917385704873`
-* **Test Citizen OTP Passcode:** `558900`
+* **Test Citizen Phone:** `+911234567899` (or `1234567899`)
+* **Test Citizen OTP Passcode:** `123456`
 * **Test Officer Password:** `Password@123`
 * **Zero Mile Stone (Nagpur Center):** `(21.1458, 79.0882)`
 
