@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'screens/map_screen.dart';
 import 'screens/issue_feed_screen.dart';
 import 'screens/report_screen.dart';
@@ -52,7 +54,7 @@ class NagpurSetuApp extends StatelessWidget {
 }
 
 /// Mandatory 3-Tier Security & Onboarding Gate:
-/// 1. Internet Connection Gate
+/// 1. Internet Connection Gate (continuous monitoring — blocks app if connection drops mid-session)
 /// 2. GPS Location Permission Gate
 /// 3. One-Time Citizen Login Gate
 class AppRootSecurityGate extends StatefulWidget {
@@ -69,21 +71,55 @@ class _AppRootSecurityGateState extends State<AppRootSecurityGate> {
   bool _hasLocationPermission = false;
   bool _isChecking = false;
 
+  /// Continuous connectivity stream subscription.
+  /// Monitors network state in real-time and blocks the app immediately
+  /// when the user loses internet mid-session (prevents security bypass).
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+
   @override
   void initState() {
     super.initState();
     _repo.addListener(_onRepoStateChanged);
+    _startContinuousConnectivityMonitor();
     _evaluateAppRequirements();
   }
 
   @override
   void dispose() {
     _repo.removeListener(_onRepoStateChanged);
+    _connectivitySubscription?.cancel();
     super.dispose();
   }
 
   void _onRepoStateChanged() {
     if (mounted) setState(() {});
+  }
+
+  /// Start listening to real-time connectivity changes.
+  /// When the user disconnects (WiFi off, airplane mode, etc.),
+  /// this immediately sets _hasInternet = false, which forces
+  /// the UI back to the NetworkGateScreen.
+  void _startContinuousConnectivityMonitor() {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) async {
+      // ConnectivityResult.none means no active network interface
+      final hasActiveInterface = results.isNotEmpty &&
+          !results.every((r) => r == ConnectivityResult.none);
+
+      if (!hasActiveInterface) {
+        // Immediately block access — user lost internet
+        if (mounted) {
+          setState(() => _hasInternet = false);
+        }
+        return;
+      }
+
+      // Active interface detected, but verify with an actual HTTP check
+      // (e.g., connected to WiFi but no actual internet access)
+      final actuallyOnline = await NetworkService.hasInternetConnection();
+      if (mounted) {
+        setState(() => _hasInternet = actuallyOnline);
+      }
+    });
   }
 
   Future<void> _evaluateAppRequirements() async {
@@ -117,7 +153,9 @@ class _AppRootSecurityGateState extends State<AppRootSecurityGate> {
       );
     }
 
-    // Tier 1: Mandatory Internet Gate
+    // Tier 1: Mandatory Internet Gate (continuously enforced)
+    // If the user loses internet at ANY point during the session,
+    // the app blocks all features until connectivity is restored.
     if (!_hasInternet) {
       return NetworkGateScreen(
         onRetry: _evaluateAppRequirements,
