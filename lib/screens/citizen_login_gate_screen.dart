@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/complaints_repository.dart';
 import '../services/supabase_service.dart';
+import '../utils/civic_theme.dart';
 
 class CitizenLoginGateScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
@@ -131,13 +132,17 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
               // Official Header Card
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F294A),
-                  borderRadius: BorderRadius.circular(12),
-                  border: const Border(
-                    left: BorderSide(color: Color(0xFFD9531E), width: 4),
-                  ),
+                  gradient: CivicTheme.orangeGradient,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFE65100).withAlpha(60),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,22 +150,24 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                     Row(
                       children: [
                         Container(
-                          width: 44,
-                          height: 44,
+                          width: 48,
+                          height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.white.withAlpha(20),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white.withAlpha(40)),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black12, blurRadius: 4),
+                            ],
                           ),
                           child: const Center(
                             child: Icon(
                               Icons.account_balance,
-                              color: Colors.white,
-                              size: 24,
+                              color: Color(0xFFE65100),
+                              size: 26,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,17 +175,17 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                               Text(
                                 'NMC NAGPUR',
                                 style: GoogleFonts.outfit(
-                                  fontSize: 18,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
                                   letterSpacing: 0.5,
                                 ),
                               ),
                               Text(
-                                'नागपूर महानगरपालिका • Citizen Portal',
+                                'नागपूर महानगरपालिका • Nagpur Setu',
                                 style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: Colors.white70,
+                                  fontSize: 12,
+                                  color: Colors.white.withAlpha(230),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -188,13 +195,20 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    Text(
-                      'GOVERNMENT OF MAHARASHTRA • URBAN DEVELOPMENT',
-                      style: GoogleFonts.inter(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFFD9531E),
-                        letterSpacing: 0.5,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(40),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'GOVERNMENT OF MAHARASHTRA • CITIZEN PORTAL',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
                   ],

@@ -3,20 +3,27 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class CivicTheme {
-  // Authoritative Municipal Color Tokens
-  static const Color primary = Color(0xFF0F294A);      // NMC Deep Navy
-  static const Color primaryDark = Color(0xFF0A1D36);  // Deep Top Bar Navy
-  static const Color accent = Color(0xFFD9531E);       // Municipal Saffron
-  static const Color background = Color(0xFFF1F5F9);   // Clean Slate White
+  // Vibrant Municipal Orange / Saffron Brand Tokens
+  static const Color primary = Color(0xFFE65100);      // Nagpur Municipal Saffron/Orange
+  static const Color primaryDark = Color(0xFFC43E00);  // Deep Municipal Orange
+  static const Color accent = Color(0xFFFF6B00);       // Radiant Orange Accent
+  static const Color background = Color(0xFFF8F9FA);   // Warm Off-White
   static const Color surface = Colors.white;
-  static const Color textPrimary = Color(0xFF0F294A);
-  static const Color textSecondary = Color(0xFF64748B);
-  static const Color border = Color(0xFFCBD5E1);
+  static const Color textPrimary = Color(0xFF1A1C1C);  // Deep Charcoal
+  static const Color textSecondary = Color(0xFF64748B);// Muted Slate
+  static const Color border = Color(0xFFE2E8F0);
 
   // Status Colors
-  static const Color statusOpen = Color(0xFFB91C1C);      // Red
-  static const Color statusInProgress = Color(0xFFD97706);// Amber
-  static const Color statusResolved = Color(0xFF15803D);  // Emerald Green
+  static const Color statusOpen = Color(0xFFDC2626);      // Crimson Red
+  static const Color statusInProgress = Color(0xFFE65100);// Orange
+  static const Color statusResolved = Color(0xFF16A34A);  // Emerald Green
+
+  // Official Orange Gradient
+  static const LinearGradient orangeGradient = LinearGradient(
+    colors: [Color(0xFFE65100), Color(0xFFFF6B00)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }
 
 /// Universal Photo Rendering Widget
@@ -32,11 +39,11 @@ Widget buildCivicPhoto(
   Widget placeholder = Container(
     width: width,
     height: height,
-    color: const Color(0xFFE2E8F0),
+    color: const Color(0xFFFFF0E5),
     child: const Center(
       child: Icon(
         Icons.image_outlined,
-        color: Color(0xFF94A3B8),
+        color: Color(0xFFE65100),
         size: 28,
       ),
     ),
@@ -66,7 +73,7 @@ Widget buildCivicPhoto(
         return Container(
           width: width,
           height: height,
-          color: const Color(0xFFE2E8F0),
+          color: const Color(0xFFFFF0E5),
           child: const Center(
             child: SizedBox(
               width: 20,

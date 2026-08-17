@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../utils/civic_theme.dart';
 
 class OfficialHeader extends StatelessWidget {
   final int selectedTab; // 0: Map, 1: Grievances
@@ -19,48 +20,28 @@ class OfficialHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF0F294A),
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFD9531E), width: 2.5),
-        ),
+        gradient: CivicTheme.orangeGradient,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x33E65100),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Statutory Strip
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'GOVT. OF MAHARASHTRA • URBAN DEVELOPMENT',
-                    style: GoogleFonts.inter(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFD9531E),
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  Text(
-                    'NMC CITIZEN SETU',
-                    style: GoogleFonts.inter(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
               // Main App Header: Menu + Title + Seal
               Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.menu, color: Colors.white, size: 24),
+                    icon: const Icon(Icons.menu, color: Colors.white, size: 26),
                     onPressed: onOpenDrawer,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -82,30 +63,32 @@ class OfficialHeader extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'नागपूर महानगरपालिका • Grievance Redressal',
+                          'नागपूर महानगरपालिका • Nagpur Setu',
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withAlpha(200),
+                            color: Colors.white.withAlpha(220),
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  // Official Municipal Emblem Icon
+                  // Official Seal
                   Container(
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(25),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white.withAlpha(50)),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 4),
+                      ],
                     ),
                     child: const Center(
                       child: Icon(
                         Icons.account_balance,
-                        color: Colors.white,
+                        color: Color(0xFFE65100),
                         size: 20,
                       ),
                     ),
@@ -118,9 +101,8 @@ class OfficialHeader extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0A1D36),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white.withAlpha(20)),
+                  color: Colors.black.withAlpha(40),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
@@ -133,7 +115,10 @@ class OfficialHeader extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
                             color: selectedTab == 0 ? Colors.white : Colors.transparent,
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: selectedTab == 0
+                                ? const [BoxShadow(color: Colors.black12, blurRadius: 4)]
+                                : null,
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -141,7 +126,7 @@ class OfficialHeader extends StatelessWidget {
                               Icon(
                                 Icons.map_outlined,
                                 size: 16,
-                                color: selectedTab == 0 ? const Color(0xFF0F294A) : Colors.white70,
+                                color: selectedTab == 0 ? const Color(0xFFE65100) : Colors.white,
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -149,7 +134,7 @@ class OfficialHeader extends StatelessWidget {
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
-                                  color: selectedTab == 0 ? const Color(0xFF0F294A) : Colors.white70,
+                                  color: selectedTab == 0 ? const Color(0xFFE65100) : Colors.white,
                                   letterSpacing: 0.5,
                                 ),
                               ),
@@ -168,7 +153,10 @@ class OfficialHeader extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
                             color: selectedTab == 1 ? Colors.white : Colors.transparent,
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: selectedTab == 1
+                                ? const [BoxShadow(color: Colors.black12, blurRadius: 4)]
+                                : null,
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -176,7 +164,7 @@ class OfficialHeader extends StatelessWidget {
                               Icon(
                                 Icons.format_list_bulleted_rounded,
                                 size: 16,
-                                color: selectedTab == 1 ? const Color(0xFF0F294A) : Colors.white70,
+                                color: selectedTab == 1 ? const Color(0xFFE65100) : Colors.white,
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -184,7 +172,7 @@ class OfficialHeader extends StatelessWidget {
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
-                                  color: selectedTab == 1 ? const Color(0xFF0F294A) : Colors.white70,
+                                  color: selectedTab == 1 ? const Color(0xFFE65100) : Colors.white,
                                   letterSpacing: 0.5,
                                 ),
                               ),
