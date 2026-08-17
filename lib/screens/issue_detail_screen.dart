@@ -16,7 +16,221 @@ class IssueDetailScreen extends StatefulWidget {
 
 class _IssueDetailScreenState extends State<IssueDetailScreen> {
   final ComplaintsRepository _repo = ComplaintsRepository();
-  bool _hasUpvoted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _repo.addListener(_onRepoChanged);
+  }
+
+  @override
+  void dispose() {
+    _repo.removeListener(_onRepoChanged);
+    super.dispose();
+  }
+
+  void _onRepoChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _showOtpCorroborationDialog(Complaint complaint) {
+    final phoneController = TextEditingController(text: _repo.currentCitizenPhone ?? '');
+    final otpController = TextEditingController();
+    bool otpSent = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              20,
+              24,
+              MediaQuery.of(context).viewInsets.bottom + 28,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF0E5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.shield_outlined, color: Color(0xFFE65100), size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Citizen Verification Required',
+                            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Verify via phone OTP to corroborate #${complaint.id}',
+                            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+
+                Text('Mobile Number (India)', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text('+91', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        maxLength: 10,
+                        decoration: InputDecoration(
+                          hintText: '9876543210',
+                          counterText: '',
+                          filled: true,
+                          fillColor: const Color(0xFFF8F9FA),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        final clean = phoneController.text.replaceAll(RegExp(r'\D'), '');
+                        if (clean.length < 10) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please enter 10-digit number')),
+                          );
+                          return;
+                        }
+                        setModalState(() {
+                          otpSent = true;
+                          otpController.text = '849201';
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE65100),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Send OTP'),
+                    ),
+                  ],
+                ),
+
+                if (otpSent) ...[
+                  const SizedBox(height: 14),
+                  Text('Enter 6-Digit OTP', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: otpController,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(fontSize: 18, letterSpacing: 8, fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0xFFF8F9FA),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        if (otpController.text.length < 4) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please enter OTP')),
+                          );
+                          return;
+                        }
+                        // 1. Set citizen login session
+                        _repo.setCitizenSession(phoneController.text);
+                        // 2. Corroborate complaint
+                        _repo.upvoteComplaint(complaint.id, _repo.currentCitizenPhoneHash!);
+
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            content: Text('✓ Corroborated! Priority boosted to ${complaint.reportCount + 1} citizen reports.'),
+                            backgroundColor: Colors.green[700],
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.check_circle, size: 18),
+                      label: const Text('Verify & Corroborate (+1)'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[600],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _handleCorroborateTap(Complaint complaint) {
+    if (_repo.isCitizenLoggedIn) {
+      if (_repo.isCorroboratedByCurrentCitizen(complaint.id)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You have already corroborated this issue.')),
+        );
+        return;
+      }
+      _repo.upvoteComplaint(complaint.id, _repo.currentCitizenPhoneHash!);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✓ Corroborated! Priority boosted to ${complaint.reportCount + 1} reports.'),
+          backgroundColor: Colors.green[700],
+        ),
+      );
+    } else {
+      _showOtpCorroborationDialog(complaint);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +240,8 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     );
 
     final isResolved = complaint.status == ComplaintStatus.resolved;
+    final isCorroborated = _repo.isCorroboratedByCurrentCitizen(complaint.id);
+
     final catObj = kCivicCategories.firstWhere(
       (cat) => cat.id.toLowerCase() == complaint.category.toLowerCase(),
       orElse: () => kCivicCategories.last,
@@ -97,16 +313,13 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                       const SizedBox(width: 8),
                       FloatingActionButton.small(
                         heroTag: 'upvote_hero',
-                        onPressed: () {
-                          if (!_hasUpvoted) {
-                            setState(() {
-                              _hasUpvoted = true;
-                            });
-                            _repo.upvoteComplaint(complaint.id, 'h_flutter_citizen');
-                          }
-                        },
-                        backgroundColor: _hasUpvoted ? Colors.green[700] : const Color(0xFFE65100),
-                        child: const Icon(Icons.thumb_up, color: Colors.white, size: 18),
+                        onPressed: isResolved ? null : () => _handleCorroborateTap(complaint),
+                        backgroundColor: isCorroborated ? Colors.green[700] : const Color(0xFFE65100),
+                        child: Icon(
+                          isCorroborated ? Icons.check : Icons.thumb_up,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
                     ],
                   ),
@@ -269,7 +482,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                             const Icon(Icons.history, size: 18, color: Color(0xFFE65100)),
                             const SizedBox(width: 6),
                             Text(
-                              'Status History & Audit',
+                              'Status History & Public Audit',
                               style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600]),
                             ),
                           ],
@@ -283,14 +496,14 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                           isLast: false,
                         ),
                         _buildTimelineNode(
-                          title: 'Assigned to Municipal Wing',
+                          title: 'Assigned to Municipal Squad',
                           subtitle: complaint.assignedTo ?? 'NMC Rapid Response Wing',
                           time: 'Squad Dispatched',
                           isActive: complaint.status == ComplaintStatus.inProgress || isResolved,
                           isLast: false,
                         ),
                         _buildTimelineNode(
-                          title: isResolved ? 'Resolved & Audited' : 'Resolution in Progress',
+                          title: isResolved ? 'Resolved & Verified' : 'Resolution in Progress',
                           subtitle: isResolved
                               ? (complaint.resolutionNotes ?? 'Field work completed.')
                               : 'Awaiting repair completion and After-Photo audit.',
@@ -413,7 +626,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
         ),
       ),
 
-      // 8. Fixed Bottom Action Bar
+      // 8. Fixed Bottom Action Bar (Single Clean "+1 Corroborate" Button)
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
@@ -443,20 +656,30 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
             Expanded(
               flex: 2,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  if (!_hasUpvoted) {
-                    setState(() => _hasUpvoted = true);
-                    _repo.upvoteComplaint(complaint.id, 'h_flutter_citizen');
-                  }
-                },
-                icon: const Icon(Icons.exposure_plus_1, size: 18),
+                onPressed: isResolved || isCorroborated
+                    ? null
+                    : () => _handleCorroborateTap(complaint),
+                icon: Icon(
+                  isCorroborated ? Icons.check_circle : Icons.thumb_up_alt_outlined,
+                  size: 18,
+                ),
                 label: Text(
-                  _hasUpvoted ? 'Corroborated!' : '+1 Me Too (Affects Me)',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14),
+                  isCorroborated
+                      ? 'Corroborated by You ✓'
+                      : isResolved
+                          ? 'Issue Resolved'
+                          : 'Corroborate (+1 Me Too)',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 13),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _hasUpvoted ? Colors.green[600] : const Color(0xFFE65100),
+                  backgroundColor: isCorroborated
+                      ? Colors.green[700]
+                      : isResolved
+                          ? Colors.grey[400]
+                          : const Color(0xFFE65100),
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: isCorroborated ? Colors.green[700] : Colors.grey[300],
+                  disabledForegroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 2,

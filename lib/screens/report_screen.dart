@@ -7,6 +7,34 @@ import '../services/location_service.dart';
 import '../utils/geo_utils.dart';
 import '../widgets/civic_category_tiles.dart';
 
+const List<Map<String, String>> kSampleCivicPhotos = [
+  {
+    'name': 'Pothole Crater (WHC Rd)',
+    'url': 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80',
+    'category': 'Pothole',
+  },
+  {
+    'name': 'Garbage Dump (Variety Sq)',
+    'url': 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=800&auto=format&fit=crop&q=80',
+    'category': 'Garbage',
+  },
+  {
+    'name': 'Pipeline Burst (Central Bazaar)',
+    'url': 'https://images.unsplash.com/photo-1584467735815-f778f274e296?w=800&auto=format&fit=crop&q=80',
+    'category': 'Water Leak',
+  },
+  {
+    'name': 'Broken Lamppost (Mount Rd)',
+    'url': 'https://images.unsplash.com/photo-1509114397022-ed747cca3f65?w=800&auto=format&fit=crop&q=80',
+    'category': 'Streetlight',
+  },
+  {
+    'name': 'Broken Drain Slab (VNIT)',
+    'url': 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=800&auto=format&fit=crop&q=80',
+    'category': 'Other',
+  },
+];
+
 class ReportScreen extends StatefulWidget {
   final VoidCallback? onReportSuccess;
 
@@ -23,12 +51,12 @@ class _ReportScreenState extends State<ReportScreen> {
   int _currentStep = 1;
 
   // Form State
-  final String _photoUrl = 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80';
+  String _photoUrl = kSampleCivicPhotos[0]['url']!;
   String _category = 'Pothole';
   bool _isClassifying = false;
   ClassificationResult? _aiResult;
 
-  final TextEditingController _landmarkController = TextEditingController(text: 'Coffee House Square, West High Court Rd, Dharampeth');
+  final TextEditingController _landmarkController = TextEditingController(text: 'Coffee House Square, West High Court Road, Dharampeth');
   final TextEditingController _descriptionController = TextEditingController();
   double _lat = 21.1432;
   double _lng = 79.0620;
@@ -37,19 +65,28 @@ class _ReportScreenState extends State<ReportScreen> {
   final TextEditingController _locationSearchController = TextEditingController();
   List<NagpurLocation> _searchSuggestions = [];
 
-  final TextEditingController _phoneController = TextEditingController(text: '9823012345');
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   bool _otpSent = false;
   bool _isPhoneVerified = false;
   String _phoneHash = '';
 
   Map<String, dynamic>? _duplicateAlert;
-  String? _errorMessage;
+  String? _rateLimitError;
 
   @override
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+
+    if (_repo.isCitizenLoggedIn) {
+      _phoneController.text = _repo.currentCitizenPhone ?? '';
+      _phoneHash = _repo.currentCitizenPhoneHash ?? '';
+      _isPhoneVerified = true;
+    } else {
+      _phoneController.text = '9823012345';
+    }
+
     _runAiClassification();
     _checkDuplicates();
   }
@@ -111,7 +148,7 @@ class _ReportScreenState extends State<ReportScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Detected location (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}) is outside Nagpur limits. Please choose a spot inside Nagpur.',
+              'Detected GPS (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}) is outside Nagpur limits. Please pick a location within Nagpur.',
             ),
             backgroundColor: Colors.red[800],
             duration: const Duration(seconds: 4),
@@ -124,13 +161,13 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() {
       _lat = lat;
       _lng = lng;
-      _landmarkController.text = 'GPS Captured (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})';
+      _landmarkController.text = 'Verified GPS Location, Nagpur (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})';
     });
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('📍 Live GPS Captured: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} (Nagpur)'),
+          content: Text('📍 Live GPS: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} (Nagpur)'),
           backgroundColor: Colors.green[700],
         ),
       );
@@ -153,11 +190,110 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() {
       _lat = loc.lat;
       _lng = loc.lng;
-      _landmarkController.text = loc.name;
+      _landmarkController.text = '${loc.name} (${loc.area})';
       _locationSearchController.text = loc.name;
       _searchSuggestions = [];
     });
     _checkDuplicates();
+  }
+
+  void _showPhotoProofPicker() {
+    final customUrlController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select or Upload Photo Proof',
+              style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 14),
+
+            // Sample Civic Photos Grid
+            SizedBox(
+              height: 100,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: kSampleCivicPhotos.length,
+                itemBuilder: (context, idx) {
+                  final item = kSampleCivicPhotos[idx];
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _photoUrl = item['url']!;
+                        _category = item['category']!;
+                      });
+                      Navigator.pop(ctx);
+                      _checkDuplicates();
+                    },
+                    child: Container(
+                      width: 100,
+                      margin: const EdgeInsets.only(right: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _photoUrl == item['url'] ? const Color(0xFFE65100) : Colors.grey[300]!,
+                          width: _photoUrl == item['url'] ? 2.5 : 1,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(item['url']!, fit: BoxFit.cover),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            Text('Or Enter Custom Photo URL / Cloud Image:', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: customUrlController,
+                    style: GoogleFonts.inter(fontSize: 12),
+                    decoration: InputDecoration(
+                      hintText: 'https://images.unsplash.com/...',
+                      filled: true,
+                      fillColor: const Color(0xFFF8F9FA),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    if (customUrlController.text.trim().isNotEmpty) {
+                      setState(() => _photoUrl = customUrlController.text.trim());
+                      Navigator.pop(ctx);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE65100),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Use Photo'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _sendOtp() {
@@ -182,6 +318,8 @@ class _ReportScreenState extends State<ReportScreen> {
       return;
     }
     final hash = GeoUtils.hashPhoneNumber(_phoneController.text);
+    _repo.setCitizenSession(_phoneController.text);
+
     setState(() {
       _phoneHash = hash;
       _isPhoneVerified = true;
@@ -189,6 +327,8 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   void _submitReport() {
+    setState(() => _rateLimitError = null);
+
     if (!GeoUtils.isInsideNagpur(_lat, _lng)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Rejected: Location is outside Nagpur city limits.')),
@@ -203,6 +343,7 @@ class _ReportScreenState extends State<ReportScreen> {
       return;
     }
 
+    // Rate-limit check & submission
     final result = _repo.submitOrMergeReport(
       category: _category,
       description: _descriptionController.text.trim().isEmpty
@@ -216,7 +357,7 @@ class _ReportScreenState extends State<ReportScreen> {
     );
 
     if (!result['success']) {
-      setState(() => _errorMessage = result['message']);
+      setState(() => _rateLimitError = result['message']);
       return;
     }
 
@@ -314,32 +455,63 @@ class _ReportScreenState extends State<ReportScreen> {
 
                 // STEP 1: Photo & Category
                 if (_currentStep == 1) ...[
-                  Text(
-                    '1. Upload Photo Proof',
-                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF1A1C1C)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '1. Upload Photo Proof',
+                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF1A1C1C)),
+                      ),
+                      TextButton.icon(
+                        onPressed: _showPhotoProofPicker,
+                        icon: const Icon(Icons.photo_library, size: 16, color: Color(0xFFE65100)),
+                        label: const Text('Change Photo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFE65100))),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
 
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: Stack(
-                      children: [
-                        Image.network(
-                          _photoUrl,
-                          height: 190,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                        if (_isClassifying)
-                          Positioned.fill(
+                  GestureDetector(
+                    onTap: _showPhotoProofPicker,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: Stack(
+                        children: [
+                          Image.network(
+                            _photoUrl,
+                            height: 190,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                          Positioned(
+                            bottom: 10,
+                            right: 10,
                             child: Container(
-                              color: Colors.black54,
-                              child: const Center(
-                                child: CircularProgressIndicator(color: Color(0xFFE65100)),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.black87,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                                  SizedBox(width: 4),
+                                  Text('Tap to Change', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                ],
                               ),
                             ),
                           ),
-                      ],
+                          if (_isClassifying)
+                            Positioned.fill(
+                              child: Container(
+                                color: Colors.black54,
+                                child: const Center(
+                                  child: CircularProgressIndicator(color: Color(0xFFE65100)),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -394,7 +566,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                 ],
 
-                // STEP 2: Location (Detect GPS & Search Nagpur)
+                // STEP 2: Location (Detect GPS & 60+ Nagpur Locations Search)
                 if (_currentStep == 2) ...[
                   // Detect GPS Button
                   Container(
@@ -438,9 +610,9 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Search Location
+                  // Search Location Autocomplete (60+ Nagpur Locations)
                   Text(
-                    'Search Nagpur Landmark',
+                    'Search Precise Nagpur Landmark & Area',
                     style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 6),
@@ -448,7 +620,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     controller: _locationSearchController,
                     onChanged: _searchNagpurLocation,
                     decoration: InputDecoration(
-                      hintText: 'Search Sitabuldi, Dharampeth, Sadar...',
+                      hintText: 'Type Dharampeth, Sitabuldi, Sadar, Wardha Rd...',
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
                       fillColor: Colors.white,
@@ -462,13 +634,15 @@ class _ReportScreenState extends State<ReportScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.grey[300]!),
+                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
                       ),
                       child: Column(
                         children: _searchSuggestions.map((loc) {
                           return ListTile(
                             dense: true,
                             leading: const Icon(Icons.location_on, color: Color(0xFFE65100), size: 18),
-                            title: Text(loc.name, style: GoogleFonts.inter(fontSize: 12)),
+                            title: Text(loc.name, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+                            subtitle: Text(loc.area, style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[600])),
                             onTap: () => _selectLocation(loc),
                           );
                         }).toList(),
@@ -477,7 +651,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   const SizedBox(height: 16),
 
                   Text(
-                    'Street / Landmark Description',
+                    'Exact Street Address / Landmark',
                     style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 6),
@@ -501,7 +675,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     controller: _descriptionController,
                     maxLines: 2,
                     decoration: InputDecoration(
-                      hintText: 'Describe severity, risk to traffic or water wastage...',
+                      hintText: 'Describe severity, road hazard or water leakage...',
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.grey[300]!)),
@@ -513,7 +687,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(12)),
-                      child: Text('❌ Location is outside Nagpur limits. Nagpur Setu only accepts reports inside Nagpur.', style: TextStyle(color: Colors.red[800], fontSize: 12)),
+                      child: Text('❌ Location is outside Nagpur municipal limits. Please pick a location inside Nagpur.', style: TextStyle(color: Colors.red[800], fontSize: 12)),
                     ),
 
                   if (_duplicateAlert != null && isNagpurValid)
@@ -647,16 +821,28 @@ class _ReportScreenState extends State<ReportScreen> {
                       child: Text('✓ Verified Citizen (SHA-256 Encrypted)', style: TextStyle(color: Colors.green[900], fontWeight: FontWeight.bold)),
                     ),
 
-                  if (_errorMessage != null)
+                  // 7-Day 50m Rate Limit Error Banner
+                  if (_rateLimitError != null)
                     Container(
                       margin: const EdgeInsets.only(top: 14),
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: Colors.red[50],
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.red[300]!),
                       ),
-                      child: Text(_errorMessage!, style: TextStyle(color: Colors.red[900], fontSize: 12)),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.red, size: 22),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _rateLimitError!,
+                              style: TextStyle(color: Colors.red[900], fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                 ],
 

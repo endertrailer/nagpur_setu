@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class OfficialHeader extends StatelessWidget {
-  final int selectedTab; // 0: Map, 1: Grievances, 2: Admin
+  final int selectedTab; // 0: Map, 1: Grievances
   final ValueChanged<int> onTabChanged;
   final VoidCallback onOpenReport;
   final VoidCallback onOpenDrawer;
@@ -40,7 +40,7 @@ class OfficialHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Bar: Menu + Title + Seal + Notification
+              // Top Bar: Menu + Title + Seal (No Notification Bell)
               Row(
                 children: [
                   // Hamburger Menu
@@ -80,8 +80,8 @@ class OfficialHeader extends StatelessWidget {
 
                   // Official Emblem / Seal
                   Container(
-                    width: 32,
-                    height: 32,
+                    width: 34,
+                    height: 34,
                     decoration: const BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
@@ -90,40 +90,14 @@ class OfficialHeader extends StatelessWidget {
                       ],
                     ),
                     child: const Center(
-                      child: Text('🏛️', style: TextStyle(fontSize: 16)),
+                      child: Text('🏛️', style: TextStyle(fontSize: 18)),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-
-                  // Notification Bell
-                  Stack(
-                    alignment: Alignment.topRight,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 24),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('No new municipal emergency alerts in Nagpur.')),
-                          );
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.yellowAccent,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
               const SizedBox(height: 14),
 
-              // Segmented Tab Switcher
+              // Segmented Tab Switcher (Dual Tabs: Map & Grievances)
               Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
@@ -134,7 +108,6 @@ class OfficialHeader extends StatelessWidget {
                   children: [
                     _buildSegmentTab(0, 'LIVE MAP', Icons.map_outlined),
                     _buildSegmentTab(1, 'GRIEVANCES', Icons.assignment_outlined),
-                    _buildSegmentTab(2, 'NMC ADMIN', Icons.admin_panel_settings_outlined),
                   ],
                 ),
               ),

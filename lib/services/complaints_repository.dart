@@ -9,12 +9,37 @@ class ComplaintsRepository extends ChangeNotifier {
   factory ComplaintsRepository() => _instance;
 
   List<Complaint> _complaints = [];
+  String? _citizenPhone;
+  String? _citizenPhoneHash;
 
   ComplaintsRepository._internal() {
     _complaints = List.from(kInitialSeedComplaints);
   }
 
   List<Complaint> get complaints => List.unmodifiable(_complaints.where((c) => GeoUtils.isInsideNagpur(c.lat, c.lng)));
+
+  String? get currentCitizenPhone => _citizenPhone;
+  String? get currentCitizenPhoneHash => _citizenPhoneHash;
+  bool get isCitizenLoggedIn => _citizenPhoneHash != null && _citizenPhoneHash!.isNotEmpty;
+
+  void setCitizenSession(String phone) {
+    _citizenPhone = phone;
+    _citizenPhoneHash = GeoUtils.hashPhoneNumber(phone);
+    notifyListeners();
+  }
+
+  bool isCorroboratedByCurrentCitizen(String complaintId) {
+    if (!isCitizenLoggedIn) return false;
+    return hasCorroborated(complaintId, _citizenPhoneHash!);
+  }
+
+  bool hasCorroborated(String complaintId, String phoneHash) {
+    final complaint = _complaints.firstWhere(
+      (c) => c.id == complaintId,
+      orElse: () => _complaints.first,
+    );
+    return complaint.reporterPhoneHashes.contains(phoneHash);
+  }
 
   void resetToDefaultSeed() {
     _complaints = List.from(kInitialSeedComplaints);
@@ -35,12 +60,12 @@ class ComplaintsRepository extends ChangeNotifier {
     if (!GeoUtils.isInsideNagpur(lat, lng)) {
       return {
         'success': false,
-        'message': 'Rejected: Location is outside Nagpur Municipal boundaries. Nagpur Setu is strictly for grievances within Nagpur city limits.',
+        'message': 'Rejected: Location is outside Nagpur Municipal Corporation boundaries. Nagpur Setu is strictly for grievances within Nagpur city limits.',
         'isDuplicate': false,
       };
     }
 
-    // 2. Check 7-day rate-limiting
+    // 2. Strict 7-day rate-limiting per phone hash within 50 meters
     final rateLimit = GeoUtils.checkRateLimit(
       phoneHash,
       lat,
@@ -134,7 +159,7 @@ class ComplaintsRepository extends ChangeNotifier {
     };
   }
 
-  /// Upvote / "+1 Me Too"
+  /// Upvote / Corroborate complaint
   Complaint? upvoteComplaint(String id, String phoneHash) {
     final index = _complaints.indexWhere((c) => c.id == id);
     if (index == -1) return null;
@@ -143,6 +168,8 @@ class ComplaintsRepository extends ChangeNotifier {
     final updatedHashes = List<String>.from(existing.reporterPhoneHashes);
     if (!updatedHashes.contains(phoneHash)) {
       updatedHashes.add(phoneHash);
+    } else {
+      return existing; // Already corroborated
     }
 
     final updated = existing.copyWith(
@@ -153,56 +180,5 @@ class ComplaintsRepository extends ChangeNotifier {
     _complaints[index] = updated;
     notifyListeners();
     return updated;
-  }
-
-  /// Update status (Open -> In Progress)
-  void updateStatus(String id, ComplaintStatus status, {String? assignedTo}) {
-    final index = _complaints.indexWhere((c) => c.id == id);
-    if (index == -1) return;
-
-    _complaints[index] = _complaints[index].copyWith(
-      status: status,
-      assignedTo: assignedTo ?? _complaints[index].assignedTo,
-    );
-    notifyListeners();
-  }
-
-  /// Mark complaint resolved (STRICTLY requires after-photo!)
-  Map<String, dynamic> resolveComplaint({
-    required String id,
-    required String resolvedPhotoUrl,
-    required String resolutionNotes,
-    String? assignedTo,
-  }) {
-    if (resolvedPhotoUrl.trim().isEmpty) {
-      return {
-        'success': false,
-        'message': 'Resolution constraint: An After-Photo proof is strictly required before marking resolved.',
-      };
-    }
-
-    final index = _complaints.indexWhere((c) => c.id == id);
-    if (index == -1) {
-      return {'success': false, 'message': 'Complaint not found.'};
-    }
-
-    final resolved = _complaints[index].copyWith(
-      status: ComplaintStatus.resolved,
-      resolvedAt: DateTime.now(),
-      resolvedPhotoUrl: resolvedPhotoUrl,
-      resolutionNotes: resolutionNotes.trim().isEmpty
-          ? 'Civic repair completed and verified by field team.'
-          : resolutionNotes.trim(),
-      assignedTo: assignedTo ?? _complaints[index].assignedTo ?? 'NMC Rapid Response Wing',
-    );
-
-    _complaints[index] = resolved;
-    notifyListeners();
-
-    return {
-      'success': true,
-      'message': 'Complaint #$id verified & resolved with After-Photo audit proof!',
-      'complaint': resolved,
-    };
   }
 }

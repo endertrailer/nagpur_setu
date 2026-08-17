@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/map_screen.dart';
 import 'screens/issue_feed_screen.dart';
-import 'screens/admin_screen.dart';
 import 'screens/report_screen.dart';
 import 'screens/location_permission_gate_screen.dart';
 import 'widgets/official_header.dart';
@@ -100,7 +99,7 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  int _currentTab = 0; // 0: Live Map, 1: Grievances, 2: NMC Admin
+  int _currentTab = 0; // 0: Live Map, 1: Grievances
 
   void _openReportScreen() {
     Navigator.push(
@@ -126,7 +125,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
       body: Column(
         children: [
-          // 1. Official Government Curved Header with Tabs
+          // 1. Official Government Header with Dual Tabs (Map & Grievances)
           OfficialHeader(
             selectedTab: _currentTab,
             onTabChanged: (idx) => setState(() => _currentTab = idx),
@@ -134,14 +133,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
           ),
 
-          // 2. Active Screen Body
+          // 2. Active Citizen Screen View
           Expanded(
             child: IndexedStack(
               index: _currentTab,
               children: [
                 MapScreen(onOpenReport: _openReportScreen),
                 const IssueFeedScreen(),
-                const AdminScreen(),
               ],
             ),
           ),

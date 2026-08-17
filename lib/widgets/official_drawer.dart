@@ -80,7 +80,9 @@ class OfficialDrawer extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    'Nagpur Setu • Public Grievance Portal',
+                    repo.isCitizenLoggedIn
+                        ? 'Citizen: +91 ${repo.currentCitizenPhone}'
+                        : 'Nagpur Setu • Public Citizen Portal',
                     style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
                   ),
                 ),
@@ -111,18 +113,10 @@ class OfficialDrawer extends StatelessWidget {
                 ),
                 _buildDrawerTile(
                   icon: Icons.add_circle_outline,
-                  title: 'File New Complaint (Geo-tagged)',
+                  title: 'Report Civic Issue (Geo-tagged)',
                   onTap: () {
                     Navigator.pop(context);
                     onOpenReport();
-                  },
-                ),
-                _buildDrawerTile(
-                  icon: Icons.admin_panel_settings_outlined,
-                  title: 'NMC Officers Admin Portal',
-                  onTap: () {
-                    Navigator.pop(context);
-                    onSelectTab(2);
                   },
                 ),
                 const Divider(),
@@ -136,7 +130,7 @@ class OfficialDrawer extends StatelessWidget {
                   ),
                 ),
                 _buildHelplineTile('NMC Control Room', '0712-2567035'),
-                _buildHelplineTile('OCW Water Supply', '1800-233-1191'),
+                _buildHelplineTile('OCW Water Emergency', '1800-233-1191'),
                 _buildHelplineTile('Fire Brigade', '101'),
                 _buildHelplineTile('Ambulance / GMC', '108'),
 
@@ -148,7 +142,7 @@ class OfficialDrawer extends StatelessWidget {
                     repo.resetToDefaultSeed();
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Database reset to initial demo dataset!')),
+                      const SnackBar(content: Text('Database reset to fresh demo complaints!')),
                     );
                   },
                 ),
@@ -160,7 +154,7 @@ class OfficialDrawer extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Govt of Maharashtra • Nagpur Municipal Corporation\nVersion 1.0.0 (Official Release)',
+              'Govt of Maharashtra • Nagpur Municipal Corporation\nPublic Citizen Grievance Network',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(fontSize: 10, color: Colors.grey[400], height: 1.4),
             ),
