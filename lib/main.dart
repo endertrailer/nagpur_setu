@@ -4,7 +4,9 @@ import 'screens/map_screen.dart';
 import 'screens/issue_feed_screen.dart';
 import 'screens/admin_screen.dart';
 import 'screens/report_screen.dart';
+import 'screens/location_permission_gate_screen.dart';
 import 'services/complaints_repository.dart';
+import 'services/location_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,8 +40,53 @@ class NagpurSetuApp extends StatelessWidget {
           scrolledUnderElevation: 0.5,
         ),
       ),
-      home: const MainNavigationScreen(),
+      home: const AppRootPermissionGate(),
     );
+  }
+}
+
+/// Gate widget that mandates location permission before entering the app
+class AppRootPermissionGate extends StatefulWidget {
+  const AppRootPermissionGate({super.key});
+
+  @override
+  State<AppRootPermissionGate> createState() => _AppRootPermissionGateState();
+}
+
+class _AppRootPermissionGateState extends State<AppRootPermissionGate> {
+  bool _isLoading = true;
+  bool _hasLocationPermission = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPermissionState();
+  }
+
+  Future<void> _checkPermissionState() async {
+    final ready = await LocationService.isLocationReady();
+    setState(() {
+      _hasLocationPermission = ready;
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFFDFAF6),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFFF6B00)),
+        ),
+      );
+    }
+
+    if (_hasLocationPermission) {
+      return const MainNavigationScreen();
+    }
+
+    return const LocationPermissionGateScreen();
   }
 }
 

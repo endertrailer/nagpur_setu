@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:confetti/confetti.dart';
 import '../services/complaints_repository.dart';
 import '../services/vision_classifier.dart';
+import '../services/location_service.dart';
 import '../utils/geo_utils.dart';
 
 class ReportScreen extends StatefulWidget {
@@ -30,6 +31,7 @@ class _ReportScreenState extends State<ReportScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   double _lat = 21.1432;
   double _lng = 79.0620;
+  bool _isDetectingLocation = false;
 
   final TextEditingController _locationSearchController = TextEditingController();
   List<NagpurLocation> _searchSuggestions = [];
@@ -91,15 +93,48 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
-  void _detectLocation() {
+  Future<void> _detectLocation() async {
+    setState(() => _isDetectingLocation = true);
+
+    final pos = await LocationService.getCurrentDeviceLocation(context);
+
+    setState(() => _isDetectingLocation = false);
+
+    if (pos == null) return;
+
+    final lat = pos.latitude;
+    final lng = pos.longitude;
+
+    if (!GeoUtils.isInsideNagpur(lat, lng)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Detected location (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}) is outside Nagpur city limits. Please select a spot inside Nagpur.',
+            ),
+            backgroundColor: Colors.red[800],
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() {
-      _lat = 21.1458;
-      _lng = 79.0882;
-      _landmarkController.text = 'Zero Mile Stone, Civil Lines, Nagpur';
+      _lat = lat;
+      _lng = lng;
+      _landmarkController.text = 'Verified GPS Location, Nagpur (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})';
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('📍 Location detected within Nagpur (GPS: 21.1458, 79.0882)')),
-    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('📍 Live GPS Captured: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} (Nagpur)'),
+          backgroundColor: Colors.green[700],
+        ),
+      );
+    }
+
     _checkDuplicates();
   }
 
@@ -400,14 +435,20 @@ class _ReportScreenState extends State<ReportScreen> {
                           ),
                         ),
                         ElevatedButton(
-                          onPressed: _detectLocation,
+                          onPressed: _isDetectingLocation ? null : _detectLocation,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: const Color(0xFFFF6B00),
                             elevation: 0,
                             side: const BorderSide(color: Color(0xFFFF6B00)),
                           ),
-                          child: const Text('Detect GPS', style: TextStyle(fontSize: 12)),
+                          child: _isDetectingLocation
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
+                                )
+                              : const Text('Detect GPS', style: TextStyle(fontSize: 12)),
                         ),
                       ],
                     ),

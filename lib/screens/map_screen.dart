@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/complaint.dart';
 import '../utils/geo_utils.dart';
 import '../services/complaints_repository.dart';
+import '../services/location_service.dart';
 import 'issue_detail_screen.dart';
 
 class MapScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _MapScreenState extends State<MapScreen> {
   String _searchQuery = '';
   List<NagpurLocation> _locationSuggestions = [];
   bool _isSearching = false;
+  bool _isDetecting = false;
 
   final LatLng _nagpurCenter = GeoUtils.nagpurCenter;
   final double _currentZoom = 13.0;
@@ -66,11 +68,43 @@ class _MapScreenState extends State<MapScreen> {
     _mapController.move(LatLng(loc.lat, loc.lng), 15.5);
   }
 
-  void _detectUserLocation() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('📍 Location detected within Nagpur (Zero Mile Center)')),
-    );
-    _mapController.move(_nagpurCenter, 15.0);
+  Future<void> _detectUserLocation() async {
+    setState(() => _isDetecting = true);
+
+    final position = await LocationService.getCurrentDeviceLocation(context);
+
+    setState(() => _isDetecting = false);
+
+    if (position == null) return;
+
+    final lat = position.latitude;
+    final lng = position.longitude;
+
+    if (!GeoUtils.isInsideNagpur(lat, lng)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Your GPS location (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}) is outside Nagpur city limits. Centering at Zero Mile Stone, Nagpur.',
+            ),
+            backgroundColor: Colors.orange[800],
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        _mapController.move(_nagpurCenter, 14.0);
+      }
+      return;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('📍 Live GPS Detected: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} (Nagpur)'),
+          backgroundColor: Colors.green[700],
+        ),
+      );
+      _mapController.move(LatLng(lat, lng), 16.0);
+    }
   }
 
   void _showComplaintPreview(Complaint complaint) {
@@ -398,8 +432,14 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                     IconButton(
                       tooltip: 'Detect My Location',
-                      icon: const Icon(Icons.my_location, color: Color(0xFFFF6B00), size: 22),
-                      onPressed: _detectUserLocation,
+                      icon: _isDetecting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(color: Color(0xFFFF6B00), strokeWidth: 2),
+                            )
+                          : const Icon(Icons.my_location, color: Color(0xFFFF6B00), size: 22),
+                      onPressed: _isDetecting ? null : _detectUserLocation,
                     ),
                   ],
                 ),
@@ -428,7 +468,7 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
 
-              // Consistent Clean Vertical Gap between Search and Category Options
+              // Consistent Clean Gap (12px)
               const SizedBox(height: 12),
 
               // Category Filter Chips
