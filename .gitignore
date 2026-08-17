@@ -38,6 +38,8 @@ migrate_working_dir/
 /android/app/profile
 /android/app/release
 .gradle/
+.kotlin/
+/android/.kotlin/
 local.properties
 
 # iOS & Pods
