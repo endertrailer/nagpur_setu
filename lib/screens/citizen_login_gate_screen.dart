@@ -48,7 +48,10 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
   Future<void> _sendOtp() async {
     final clean = _phoneController.text.replaceAll(RegExp(r'\D'), '');
     if (clean.length < 10) {
-      setState(() => _errorMessage = 'Please enter a valid 10-digit Indian mobile number.');
+      setState(
+        () => _errorMessage =
+            'Please enter a valid 10-digit Indian mobile number.',
+      );
       return;
     }
 
@@ -90,7 +93,10 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
       _errorMessage = null;
     });
 
-    final res = await SupabaseConfig.verifyPhoneOtp(_phoneController.text, code);
+    final res = await SupabaseConfig.verifyPhoneOtp(
+      _phoneController.text,
+      code,
+    );
 
     setState(() => _isVerifyingOtp = false);
 
@@ -186,7 +192,10 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                     ),
                     const SizedBox(height: 20),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withAlpha(40),
                         borderRadius: BorderRadius.circular(10),
@@ -208,7 +217,7 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
 
               // Title Section
               Text(
-                'Citizen Mobile Login',
+                'Citizen Mobile Login or Register',
                 style: GoogleFonts.outfit(
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
@@ -239,7 +248,10 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 16,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
@@ -247,7 +259,11 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                     ),
                     child: Text(
                       '+91',
-                      style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFF1A1C1C)),
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1A1C1C),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -256,21 +272,33 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
                       maxLength: 10,
-                      style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Enter 10-digit number',
-                        hintStyle: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.normal),
+                        hintStyle: TextStyle(
+                          color: Colors.grey[400],
+                          fontWeight: FontWeight.normal,
+                        ),
                         counterText: '',
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide(color: Colors.grey[300]!),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Color(0xFFE65100), width: 1.8),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE65100),
+                            width: 1.8,
+                          ),
                         ),
                       ),
                     ),
@@ -289,17 +317,25 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                       backgroundColor: const Color(0xFFE65100),
                       foregroundColor: Colors.white,
                       elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                     child: _isSendingOtp
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.2),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.2,
+                            ),
                           )
                         : Text(
                             'Send Verification OTP',
-                            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800),
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                   ),
                 ),
@@ -312,16 +348,26 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                   children: [
                     Text(
                       'Enter 6-Digit OTP Code',
-                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF1A1C1C)),
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A1C1C),
+                      ),
                     ),
                     TextButton(
-                      onPressed: (_resendCountdown > 0 || _isSendingOtp) ? null : _sendOtp,
+                      onPressed: (_resendCountdown > 0 || _isSendingOtp)
+                          ? null
+                          : _sendOtp,
                       child: Text(
-                        _resendCountdown > 0 ? 'Resend in ${_resendCountdown}s' : 'Resend Code',
+                        _resendCountdown > 0
+                            ? 'Resend in ${_resendCountdown}s'
+                            : 'Resend Code',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: _resendCountdown > 0 ? Colors.grey : const Color(0xFFE65100),
+                          color: _resendCountdown > 0
+                              ? Colors.grey
+                              : const Color(0xFFE65100),
                         ),
                       ),
                     ),
@@ -341,7 +387,10 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                   ),
                   decoration: InputDecoration(
                     hintText: '• • • • • •',
-                    hintStyle: const TextStyle(letterSpacing: 6, color: Colors.grey),
+                    hintStyle: const TextStyle(
+                      letterSpacing: 6,
+                      color: Colors.grey,
+                    ),
                     counterText: '',
                     filled: true,
                     fillColor: Colors.white,
@@ -352,7 +401,10 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFFE65100), width: 1.8),
+                      borderSide: const BorderSide(
+                        color: Color(0xFFE65100),
+                        width: 1.8,
+                      ),
                     ),
                   ),
                 ),
@@ -367,17 +419,25 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                       backgroundColor: Colors.green[700],
                       foregroundColor: Colors.white,
                       elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                     child: _isVerifyingOtp
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.2),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.2,
+                            ),
                           )
                         : Text(
                             'Verify & Enter Nagpur Setu',
-                            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800),
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                   ),
                 ),
@@ -394,12 +454,20 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.red,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: Colors.red[900], fontSize: 12, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: Colors.red[900],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -412,12 +480,20 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
               Center(
                 child: Column(
                   children: [
-                    const Icon(Icons.lock_outline, size: 18, color: Colors.grey),
+                    const Icon(
+                      Icons.lock_outline,
+                      size: 18,
+                      color: Colors.grey,
+                    ),
                     const SizedBox(height: 6),
                     Text(
                       'Your mobile number is SHA-256 encrypted for privacy.\nNagpur Municipal Corporation Citizen Security Gate',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[500], height: 1.4),
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: Colors.grey[500],
+                        height: 1.4,
+                      ),
                     ),
                   ],
                 ),
