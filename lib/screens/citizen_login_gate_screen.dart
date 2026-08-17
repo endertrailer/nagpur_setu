@@ -131,21 +131,13 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
               // Official Header Card
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFE65100), Color(0xFFFF6B00)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                  color: const Color(0xFF0F294A),
+                  borderRadius: BorderRadius.circular(12),
+                  border: const Border(
+                    left: BorderSide(color: Color(0xFFD9531E), width: 4),
                   ),
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFE65100).withAlpha(60),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,17 +145,22 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                     Row(
                       children: [
                         Container(
-                          width: 52,
-                          height: 52,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha(20),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white.withAlpha(40)),
                           ),
                           child: const Center(
-                            child: Text('🏛️', style: TextStyle(fontSize: 28)),
+                            child: Icon(
+                              Icons.account_balance,
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,17 +168,17 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                               Text(
                                 'NMC NAGPUR',
                                 style: GoogleFonts.outfit(
-                                  fontSize: 20,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
                                   letterSpacing: 0.5,
                                 ),
                               ),
                               Text(
-                                'नागपूर महानगरपालिका',
+                                'नागपूर महानगरपालिका • Citizen Portal',
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: Colors.white.withAlpha(220),
+                                  fontSize: 11,
+                                  color: Colors.white70,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -190,24 +187,14 @@ class _CitizenLoginGateScreenState extends State<CitizenLoginGateScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(40),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        'NAGPUR SETU • PUBLIC CITIZEN APP',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: 0.8,
-                        ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'GOVERNMENT OF MAHARASHTRA • URBAN DEVELOPMENT',
+                      style: GoogleFonts.inter(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFFD9531E),
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ],

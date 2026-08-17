@@ -19,38 +19,53 @@ class OfficialHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFE65100), Color(0xFFFF6B00)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        color: Color(0xFF0F294A),
+        border: Border(
+          bottom: BorderSide(color: Color(0xFFD9531E), width: 2.5),
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(26)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x33E65100),
-            blurRadius: 14,
-            offset: Offset(0, 4),
-          ),
-        ],
       ),
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Bar: Menu + Title + Seal (No Notification Bell)
+              // Top Statutory Strip
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'GOVT. OF MAHARASHTRA • URBAN DEVELOPMENT',
+                    style: GoogleFonts.inter(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFD9531E),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  Text(
+                    'NMC CITIZEN SETU',
+                    style: GoogleFonts.inter(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Main App Header: Menu + Title + Seal
               Row(
                 children: [
-                  // Hamburger Menu
                   IconButton(
-                    icon: const Icon(Icons.menu, color: Colors.white, size: 26),
+                    icon: const Icon(Icons.menu, color: Colors.white, size: 24),
                     onPressed: onOpenDrawer,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
 
                   // Title & Subtitle
                   Expanded(
@@ -67,135 +82,118 @@ class OfficialHeader extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'नागपूर महानगरपालिका • Nagpur Setu',
+                          'नागपूर महानगरपालिका • Grievance Redressal',
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withAlpha(220),
+                            color: Colors.white.withAlpha(200),
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  // Official Emblem / Seal
+                  // Official Municipal Emblem Icon
                   Container(
-                    width: 34,
-                    height: 34,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(color: Colors.black12, blurRadius: 4),
-                      ],
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(25),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white.withAlpha(50)),
                     ),
                     child: const Center(
-                      child: Text('🏛️', style: TextStyle(fontSize: 18)),
+                      child: Icon(
+                        Icons.account_balance,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
 
               // Segmented Tab Switcher (Dual Tabs: Map & Grievances)
               Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
-                  color: Colors.black.withAlpha(35),
-                  borderRadius: BorderRadius.circular(14),
+                  color: const Color(0xFF0A1D36),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white.withAlpha(20)),
                 ),
                 child: Row(
                   children: [
-                    _buildSegmentTab(0, 'LIVE MAP', Icons.map_outlined),
-                    _buildSegmentTab(1, 'GRIEVANCES', Icons.assignment_outlined),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // Sub-header Tagline
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Know your city services in one touch',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white.withAlpha(235),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: onOpenReport,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black12, blurRadius: 4),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.add_circle, color: Color(0xFFE65100), size: 14),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Report Issue',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFFE65100),
-                            ),
+                    // Tab 1: Live City Map
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => onTabChanged(0),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: selectedTab == 0 ? Colors.white : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.map_outlined,
+                                size: 16,
+                                color: selectedTab == 0 ? const Color(0xFF0F294A) : Colors.white70,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'LIVE MAP',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: selectedTab == 0 ? const Color(0xFF0F294A) : Colors.white70,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildSegmentTab(int index, String label, IconData icon) {
-    final isSelected = selectedTab == index;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => onTabChanged(index),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(11),
-            boxShadow: isSelected
-                ? const [
-                    BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 14,
-                color: isSelected ? const Color(0xFFE65100) : Colors.white,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: isSelected ? const Color(0xFFE65100) : Colors.white,
-                  letterSpacing: 0.3,
+                    // Tab 2: Public Grievances Feed
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => onTabChanged(1),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: selectedTab == 1 ? Colors.white : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.format_list_bulleted_rounded,
+                                size: 16,
+                                color: selectedTab == 1 ? const Color(0xFF0F294A) : Colors.white70,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'GRIEVANCES',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: selectedTab == 1 ? const Color(0xFF0F294A) : Colors.white70,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
